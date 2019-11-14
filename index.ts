@@ -24,14 +24,17 @@ bot.on('photo', (ctx) => {
         }
     }
 
-    if(lastChat) {
-        bot.telegram.sendPhoto(lastChat, bestPhoto.file_id);
-        bot.telegram.sendPhoto(ctx.chat.id, lastPic);
-        lastChat = lastPic = null;
-    } else {
+    if(!lastChat) {
         lastChat = ctx.chat.id;
         lastPic = bestPhoto.file_id;
         ctx.reply('Waiting for another user to upload their photo');
+    } else if(lastChat === ctx.chat.id){
+        lastPic = bestPhoto.file_id;
+        ctx.reply('You already uploaded a photo before. I\'ll send this one instead of the previous');
+    } else {
+        bot.telegram.sendPhoto(lastChat, bestPhoto.file_id);
+        bot.telegram.sendPhoto(ctx.chat.id, lastPic);
+        lastChat = lastPic = null;
     }
 });
 
