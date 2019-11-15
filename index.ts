@@ -7,7 +7,7 @@ type Conf = {
 }
 
 let lastChat: number;
-let lastPic: string;
+let lastPic: {id: string, caption: string};
 
 // const Telegraf = require('telegraf');
 const conf: Conf = JSON.parse(fs.readFileSync('./conf.json', {encoding: 'UTF-8'}));
@@ -26,14 +26,16 @@ bot.on('photo', (ctx) => {
 
     if(!lastChat) {
         lastChat = ctx.chat.id;
-        lastPic = bestPhoto.file_id;
+        lastPic = { id: bestPhoto.file_id, caption: ctx.message.caption };
         ctx.reply('Waiting for another user to upload their photo');
     } else if(lastChat === ctx.chat.id){
-        lastPic = bestPhoto.file_id;
+        lastPic = { id: bestPhoto.file_id, caption: ctx.message.caption };
         ctx.reply('You already uploaded a photo before. I\'ll send this one instead of the previous');
     } else {
-        bot.telegram.sendPhoto(lastChat, bestPhoto.file_id);
-        bot.telegram.sendPhoto(ctx.chat.id, lastPic);
+        // Envíamos la foto B al usuario A
+        bot.telegram.sendPhoto(lastChat, bestPhoto.file_id, {caption: ctx.message.caption});
+        // Envíamos la foto A al usuario B
+        bot.telegram.sendPhoto(ctx.chat.id, lastPic.id, {caption: lastPic.caption});
         lastChat = lastPic = null;
     }
 });
