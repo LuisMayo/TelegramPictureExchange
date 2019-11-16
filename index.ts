@@ -17,7 +17,7 @@ bot.start(ctx => {
     ctx.reply('Hi! This bot can be used for exchanging pictures with random users!\nTo start just sent me a picture, caption can be provided')
 });
 bot.on('photo', (ctx) => {
-    console.log('New photo!');
+    console.log('New photo! at '+ new Date().toString());
     let bestPhoto: PhotoSize;
     for (const photo of ctx.message.photo) {
         if(!bestPhoto || bestPhoto.file_size < photo.file_size) {
