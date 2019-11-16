@@ -10,7 +10,7 @@ let lastChat: number;
 let lastPic: { id: string, caption: string };
 
 // const Telegraf = require('telegraf');
-const conf: Conf = JSON.parse(fs.readFileSync('./conf.json', { encoding: 'UTF-8' }));
+const conf: Conf = JSON.parse(fs.readFileSync('./conf/conf.json', { encoding: 'UTF-8' }));
 const db = require('sqlite3-wrapper').open('./exchangeBotDB.db');
 const bot = new Telegraf.default(conf.token);
 
