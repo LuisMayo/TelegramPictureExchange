@@ -2,3 +2,4 @@ node_modules
 .theia
 index.js
 conf.json
+exchangeBotDB.db
