@@ -8,7 +8,7 @@ type Conf = {
 }
 
 let lastChat: number;
-let lastPic: { id: string, caption: string };
+let lastPic: { id: string, caption: string, user: number };
 
 // const Telegraf = require('telegraf');
 const conf: Conf = JSON.parse(fs.readFileSync('./conf/conf.json', { encoding: 'UTF-8' }));
@@ -45,18 +45,18 @@ function resendPic(ctx: Telegraf.ContextMessageUpdate) {
 
     if (!lastChat) {
         lastChat = ctx.chat.id;
-        lastPic = { id: bestPhoto.file_id, caption: ctx.message.caption };
+        lastPic = { id: bestPhoto.file_id, caption: ctx.message.caption, user: ctx.from.id };
         ctx.reply('Waiting for another user to upload their photo');
     } else if (lastChat === ctx.chat.id) {
-        lastPic = { id: bestPhoto.file_id, caption: ctx.message.caption };
+        lastPic = { id: bestPhoto.file_id, caption: ctx.message.caption, user: ctx.from.id };
         ctx.reply('You already uploaded a photo before. I\'ll send this one instead of the previous');
     } else {
         // Envíamos la foto B al usuario A
         // @ts-ignore
-        bot.telegram.sendPhoto(lastChat, bestPhoto.file_id, Telegraf.Extra.load({ caption: ctx.message.caption}).markup(makeKeyboard(ctx)));
+        bot.telegram.sendPhoto(lastChat, bestPhoto.file_id, Telegraf.Extra.load({ caption: ctx.message.caption}).markup(makeKeyboard(ctx.from.id)));
         // Envíamos la foto A al usuario B
         // @ts-ignore
-        bot.telegram.sendPhoto(ctx.chat.id, lastPic.id, Telegraf.Extra.load({ caption: lastPic.caption}).markup(makeKeyboard(ctx)));
+        bot.telegram.sendPhoto(ctx.chat.id, lastPic.id, Telegraf.Extra.load({ caption: lastPic.caption}).markup(makeKeyboard(lastPic.user)));
         lastChat = lastPic = null;
     }
 }
@@ -71,9 +71,9 @@ function getBestPhoto(ctx: Message) {
     return bestPhoto;
 }
 
-function makeKeyboard(ctx: Telegraf.ContextMessageUpdate) {
+function makeKeyboard(id: Telegraf.ContextMessageUpdate) {
     const keyboard = Telegraf.Markup.inlineKeyboard([
-        Telegraf.Markup.callbackButton("Report", "report:" + ctx.from.id)
+        Telegraf.Markup.callbackButton("Report", "report:" + id)
     ]);
     return keyboard
 }
