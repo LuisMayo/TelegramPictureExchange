@@ -23,6 +23,30 @@ bot.on('photo', (ctx) => {
     checkPermissionsAndExecute(ctx, resendPic);
 });
 
+bot.command('warn', (ctx) => {
+    if (ctx.chat.id === +conf.adminChat) {
+        let args = ctx.message.text.split(' ');
+        bot.telegram.sendMessage(args[1], 'You\'ve been warned: '+ args.slice(2).join(' '));
+        saveWarning(args[1]);
+    }
+});
+
+bot.command('ban', (ctx) => {
+    if (ctx.chat.id === +conf.adminChat) {
+        let args = ctx.message.text.split(' ');
+        bot.telegram.sendMessage(args[1], 'You\'ve been banned: '+ args.slice(2).join(' '));
+        saveBan(args[1]);
+    }
+});
+
+bot.command('unban', (ctx) => {
+    if (ctx.chat.id === +conf.adminChat) {
+        let args = ctx.message.text.split(' ');
+        bot.telegram.sendMessage(args[1], 'You\'ve been un-banned: '+ args.slice(2).join(' '));
+        unban(args[1]);
+    }
+});
+
 bot.use(ctx => {
     if(ctx.callbackQuery && ctx.callbackQuery.data.startsWith('report:')) {
         checkPermissionsAndExecute(ctx, report);
@@ -77,6 +101,31 @@ function makeKeyboard(id: Telegraf.ContextMessageUpdate) {
     ]);
     return keyboard
 }
+
+function saveWarning(id: string) {
+    db.select({ table: 'users', where: { id: id } }, (err, users) => {
+    if (users && users.length > 0) {
+            db.update('users', {id: +id}, { warnings: users[0].warnings + 1, lastWarningDate: new Date().toString() });
+        }
+    });
+}
+
+function saveBan(id: string) {
+    try {
+        db.update('users', {id: +id}, { banned: 1, banDate: new Date().toString() });
+    } catch (e) {
+        console.log(e);
+    }
+}
+
+function unban(id: string) {
+    try {
+    db.update('users', {id: +id}, { banned: 0 });
+    } catch (e) {
+        console.log(e);
+    }
+}
+
 
 function checkPermissionsAndExecute(ctx: Telegraf.ContextMessageUpdate, fn: ((ctx: Telegraf.ContextMessageUpdate) => any)) {
     db.select({ table: 'users', where: { id: ctx.from.id } }, (err, users) => {
