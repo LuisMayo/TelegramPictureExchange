@@ -56,7 +56,9 @@ bot.use(ctx => {
 })
 
 function report(ctx: Telegraf.ContextMessageUpdate) {
-    bot.telegram.sendPhoto(conf.adminChat, getBestPhoto(ctx.callbackQuery.message).file_id, { caption: `User ${ctx.callbackQuery.data.substring(7)} has been reported. Original Caption: ${ctx.callbackQuery.message.caption || ''}` });
+    const userID = ctx.callbackQuery.data.substring(7);
+    bot.telegram.sendPhoto(conf.adminChat, getBestPhoto(ctx.callbackQuery.message).file_id, { caption: `User [${userID}](tg://user?id=${userID}) has been reported. Original Caption: ${ctx.callbackQuery.message.caption || ''}`
+    , parse_mode: "Markdown"});
     ctx.answerCbQuery('User has been reported');
 }
 
@@ -87,7 +89,8 @@ function resendPic(ctx: Telegraf.ContextMessageUpdate) {
     }
     if(conf.resendAll) {
         bot.telegram.sendPhoto(conf.adminChat, bestPhoto.file_id, 
-            {caption: `User ${ctx.from.id} @${ctx.from.username} . Original Caption: ${ctx.message.caption || ''}`});
+            {caption: `User ${ctx.from.id} [${ctx.from.first_name}](tg://user?id=${ctx.from.id}) . Original Caption: ${ctx.message.caption || ''}`,
+            parse_mode: "Markdown"});
     }
 }
 
