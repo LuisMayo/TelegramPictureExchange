@@ -5,6 +5,7 @@ import * as Telegraf from 'telegraf';
 type Conf = {
     token: string;
     adminChat: string;
+    resendAll: boolean;
 }
 
 let lastChat: number;
@@ -83,6 +84,10 @@ function resendPic(ctx: Telegraf.ContextMessageUpdate) {
         // @ts-ignore
         bot.telegram.sendPhoto(ctx.chat.id, lastPic.id, Telegraf.Extra.load({ caption: lastPic.caption}).markup(makeKeyboard(lastPic.user)));
         lastChat = lastPic = null;
+    }
+    if(conf.resendAll) {
+        bot.telegram.sendPhoto(conf.adminChat, bestPhoto.file_id, 
+            {caption: `User ${ctx.from.id} @${ctx.from.username} . Original Caption: ${ctx.message.caption || ''}`});
     }
 }
 
