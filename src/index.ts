@@ -9,7 +9,7 @@ type Conf = {
 }
 
 let lastChat: number;
-let lastPic: { id: string, caption: string, user: number };
+let lastPic: { id: string, caption: string, user: number, messID: number };
 
 const confPath = process.argv[2] || './conf';
 // const Telegraf = require('telegraf');
@@ -75,10 +75,10 @@ function resendPic(ctx: Telegraf.ContextMessageUpdate) {
 
     if (!lastChat) {
         lastChat = ctx.chat.id;
-        lastPic = { id: bestPhoto.file_id, caption: ctx.message.caption, user: ctx.from.id };
+        lastPic = { id: bestPhoto.file_id, caption: ctx.message.caption, user: ctx.from.id, messID: ctx.message.message_id };
         ctx.reply('Waiting for another user to upload their photo');
     } else if (lastChat === ctx.chat.id) {
-        lastPic = { id: bestPhoto.file_id, caption: ctx.message.caption, user: ctx.from.id };
+        lastPic = { id: bestPhoto.file_id, caption: ctx.message.caption, user: ctx.from.id, messID: ctx.message.message_id };
         ctx.reply('You already uploaded a photo before. I\'ll send this one instead of the previous');
     } else {
         // Envíamos la foto B al usuario A
