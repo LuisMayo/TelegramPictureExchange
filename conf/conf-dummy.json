@@ -3,5 +3,6 @@
     "token": "YOUR-TOKEN-HERE",
     "adminChat": "YOUR ADMIN CHANNEL HERE",
     "resendAllComment": "If ResendAll is true, all files sent will be resent to the admin chat",
-    "resendAll": false
+    "resendAll": false,
+    "extendedLog": false
 }
