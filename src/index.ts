@@ -6,6 +6,7 @@ type Conf = {
     token: string;
     adminChat: string;
     resendAll: boolean;
+    extendedLog: boolean;
 }
 
 let lastChat: number;
@@ -117,6 +118,7 @@ function saveWarning(id: string) {
     db.select({ table: 'users', where: { id: id } }, (err, users) => {
     if (users && users.length > 0) {
             db.update('users', {id: +id}, { warnings: users[0].warnings + 1, lastWarningDate: new Date().toString() });
+            bot.telegram.sendMessage(conf.adminChat, 'User warned correctly');
         }
     });
 }
@@ -124,6 +126,7 @@ function saveWarning(id: string) {
 function saveBan(id: string) {
     try {
         db.update('users', {id: +id}, { banned: 1, banDate: new Date().toString() });
+        bot.telegram.sendMessage(conf.adminChat, 'User banned correctly');
     } catch (e) {
         console.log(e);
     }
