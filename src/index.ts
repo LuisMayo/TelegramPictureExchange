@@ -55,9 +55,11 @@ bot.use(ctx => {
     }
 })
 
-function report(ctx: Telegraf.ContextMessageUpdate) {
+async function report(ctx: Telegraf.ContextMessageUpdate) {
     const userID = ctx.callbackQuery.data.substring(7);
-    bot.telegram.sendPhoto(conf.adminChat, getBestPhoto(ctx.callbackQuery.message).file_id, { caption: `User [${userID}](tg://user?id=${userID}) has been reported. Original Caption: ${ctx.callbackQuery.message.caption || ''}`
+    const reportedName = await getUserByIDAndExecute(userID)
+    bot.telegram.sendPhoto(conf.adminChat, getBestPhoto(ctx.callbackQuery.message).file_id,
+    { caption: `User [${ctx.from.first_name}](tg://user?id=${ctx.from.id}) has reported [${reportedName}](tg://user?id=${userID}). Original Caption: ${ctx.callbackQuery.message.caption || ''}`
     , parse_mode: "Markdown"});
     ctx.answerCbQuery('User has been reported');
 }
@@ -66,7 +68,7 @@ function resendPic(ctx: Telegraf.ContextMessageUpdate) {
     let bestPhoto: PhotoSize;
     db.select({ table: 'users', where: { id: ctx.from.id } }, (err, users) => {
         if (!users || users.length <= 0) {
-            db.insert('users', { id: ctx.from.id, username: ctx.from.username });
+            db.insert('users', { id: ctx.from.id, username: ctx.from.first_name });
         }
     });
     bestPhoto = getBestPhoto(ctx.message);
@@ -148,6 +150,18 @@ function checkPermissionsAndExecute(ctx: Telegraf.ContextMessageUpdate, fn: ((ct
                 fn(ctx);
             }
         }
+    });
+}
+
+function getUserByIDAndExecute(id: string) {
+    return new Promise(resolve => {
+        db.select({ table: 'users', where: { id: id } }, (err, users) => {
+            if (!users || users.length <= 0) {
+                resolve(null);
+            } else {
+                resolve(users[0].username);
+            }
+        });
     });
 }
 
