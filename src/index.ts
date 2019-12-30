@@ -58,7 +58,7 @@ bot.use(ctx => {
 
 async function report(ctx: Telegraf.ContextMessageUpdate) {
     const userID = ctx.callbackQuery.data.substring(7);
-    const reportedName = await getUserByIDAndExecute(userID)
+    const reportedName = await getUserByID(userID)
     bot.telegram.sendPhoto(conf.adminChat, getBestPhoto(ctx.callbackQuery.message).file_id,
         {
             caption: `User [${makeUserLink(ctx.from)} has reported [${reportedName}](tg://user?id=${userID}). Original Caption: ${ctx.callbackQuery.message.caption || ''}`
@@ -176,7 +176,7 @@ function checkPermissionsAndExecute(ctx: Telegraf.ContextMessageUpdate, fn: ((ct
     });
 }
 
-function getUserByIDAndExecute(id: string) {
+function getUserByID(id: string) {
     return new Promise(resolve => {
         db.select({ table: 'users', where: { id: id } }, (err, users) => {
             if (!users || users.length <= 0) {
