@@ -14,7 +14,7 @@ let lastPic: { id: string, caption: string, user: number, messID: number, userNa
 const confPath = process.argv[2] || './conf';
 // const Telegraf = require('telegraf');
 const conf: Conf = JSON.parse(fs.readFileSync(confPath + '/conf.json', { encoding: 'UTF-8' }));
-const db = require('sqlite3-wrapper').open(confPath + './exchangeBotDB.db');
+const db = require('sqlite3-wrapper').open(confPath + '/exchangeBotDB.db');
 const bot = new Telegraf.default(conf.token);
 
 bot.start(ctx => {
@@ -205,6 +205,6 @@ function loadState() {
     }
 }
 
-
+bot.launch();
 loadState();
 bot.launch();
