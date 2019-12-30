@@ -9,8 +9,7 @@ type Conf = {
     extendedLog: boolean;
 }
 
-let lastChat: number;
-let lastPic: { id: string, caption: string, user: number, messID: number, userName: string };
+let lastPic: { id: string, caption: string, user: number, messID: number, userName: string, chat: number };
 
 const confPath = process.argv[2] || './conf';
 // const Telegraf = require('telegraf');
@@ -56,6 +55,11 @@ bot.use(ctx => {
     }
 })
 
+process.on('SIGINT', function () {
+    saveState();
+    process.exit(0);
+});
+
 async function report(ctx: Telegraf.ContextMessageUpdate) {
     const userID = ctx.callbackQuery.data.substring(7);
     const reportedName = await getUserByID(userID)
@@ -76,16 +80,15 @@ function resendPic(ctx: Telegraf.ContextMessageUpdate) {
     });
     bestPhoto = getBestPhoto(ctx.message);
 
-    if (!lastChat) {
-        lastChat = ctx.chat.id;
-        lastPic = { id: bestPhoto.file_id, caption: ctx.message.caption, user: ctx.from.id, messID: ctx.message.message_id, userName: ctx.from.first_name };
+    if (!lastPic) {
+        lastPic = { id: bestPhoto.file_id, caption: ctx.message.caption, user: ctx.from.id, messID: ctx.message.message_id, userName: ctx.from.first_name, chat: ctx.chat.id };
         ctx.reply('Waiting for another user to upload their photo');
         if (conf.extendedLog) {
             bot.telegram.sendMessage(conf.adminChat, `User ${makeUserLink(ctx.from)} has sent a picture`,
                 { parse_mode: 'Markdown' });
         }
-    } else if (lastChat === ctx.chat.id) {
-        lastPic = { id: bestPhoto.file_id, caption: ctx.message.caption, user: ctx.from.id, messID: ctx.message.message_id, userName: ctx.from.first_name };
+    } else if (lastPic.chat === ctx.chat.id) {
+        lastPic = { id: bestPhoto.file_id, caption: ctx.message.caption, user: ctx.from.id, messID: ctx.message.message_id, userName: ctx.from.first_name, chat: ctx.chat.id };
         ctx.reply('You already uploaded a photo before. I\'ll send this one instead of the previous');
         if (conf.extendedLog) {
             bot.telegram.sendMessage(conf.adminChat, `User ${makeUserLink(ctx.from)} has overwritten a sent picture`,
@@ -94,7 +97,7 @@ function resendPic(ctx: Telegraf.ContextMessageUpdate) {
     } else {
         // Envíamos la foto B al usuario A
         // @ts-ignore
-        bot.telegram.sendPhoto(lastChat, bestPhoto.file_id, Telegraf.Extra.load({ caption: ctx.message.caption }).markup(makeKeyboard(ctx.from.id)));
+        bot.telegram.sendPhoto(lastPic.chat, bestPhoto.file_id, Telegraf.Extra.load({ caption: ctx.message.caption }).markup(makeKeyboard(ctx.from.id)));
         // Envíamos la foto A al usuario B
         // @ts-ignore
         bot.telegram.sendPhoto(ctx.chat.id, lastPic.id, Telegraf.Extra.load({ caption: lastPic.caption }).markup(makeKeyboard(lastPic.user)));
@@ -102,7 +105,7 @@ function resendPic(ctx: Telegraf.ContextMessageUpdate) {
             bot.telegram.sendMessage(conf.adminChat, `User ${makeUserLink(ctx.from)} has exchanged pictures with [${lastPic.userName}](tg://user?id=${lastPic.user})`,
                 { parse_mode: 'Markdown' });
         }
-        lastChat = lastPic = null;
+        lastPic = null;
     }
     if (conf.resendAll) {
         bot.telegram.sendPhoto(conf.adminChat, bestPhoto.file_id,
@@ -188,6 +191,20 @@ function getUserByID(id: string) {
     });
 }
 
+function saveState() {
+    const save = JSON.stringify(lastPic);
+    fs.writeFileSync(confPath + '/lastPic.json', save, {encoding: 'UTF-8'});
+}
+
+function loadState() {
+    try {
+        const load = fs.readFileSync(confPath + '/lastPic.json', {encoding: 'UTF-8'});
+        lastPic = JSON.parse(load)
+    } catch (e) {
+        lastPic = null;
+    }
+}
 
 
+loadState();
 bot.launch();

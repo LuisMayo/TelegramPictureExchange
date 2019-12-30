@@ -5,3 +5,4 @@ conf.json
 exchangeBotDB.db
 lib
 build
+conf/lastPic.json
