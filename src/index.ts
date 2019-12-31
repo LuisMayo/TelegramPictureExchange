@@ -4,7 +4,7 @@ import * as Telegraf from 'telegraf';
 import { Status } from './Status';
 import { Conf } from './Conf';
 
-const version = '1.1.0';
+const version = '1.2.0';
 
 let lastPic: { id: string, caption: string, user: number, messID: number, userName: string, chat: number };
 const userStatus = new  Map<number, {status: Status, extraInfo: ReplyInfo}>();
@@ -143,9 +143,9 @@ function getBestPhoto(ctx: Message) {
     return bestPhoto;
 }
 
-function makeKeyboard(id: Telegraf.ContextMessageUpdate) {
+function makeKeyboard(ctx: Telegraf.ContextMessageUpdate) {
     const keyboard = Telegraf.Markup.inlineKeyboard([
-        Telegraf.Markup.callbackButton("Report", "report:" + id)
+        Telegraf.Markup.callbackButton("Report", "report:" + ctx)
     ]);
     return keyboard
 }
