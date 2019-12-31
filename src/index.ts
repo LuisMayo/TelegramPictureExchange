@@ -2,6 +2,8 @@ import * as fs from 'fs';
 import { PhotoSize, Message, User } from 'telegraf/typings/telegram-types';
 import * as Telegraf from 'telegraf';
 
+const version = '1.1.0';
+
 type Conf = {
     token: string;
     adminChat: string;
@@ -23,6 +25,10 @@ bot.start(ctx => {
 bot.on('photo', (ctx) => {
     console.log('New photo! at ' + new Date().toString());
     checkPermissionsAndExecute(ctx, resendPic);
+});
+
+bot.command('version', ctx => {
+    ctx.reply(version);
 });
 
 bot.command('warn', (ctx) => {
@@ -65,7 +71,7 @@ async function report(ctx: Telegraf.ContextMessageUpdate) {
     const reportedName = await getUserByID(userID)
     bot.telegram.sendPhoto(conf.adminChat, getBestPhoto(ctx.callbackQuery.message).file_id,
         {
-            caption: `User [${makeUserLink(ctx.from)} has reported [${reportedName}](tg://user?id=${userID}). Original Caption: ${ctx.callbackQuery.message.caption || ''}`
+            caption: `User ${makeUserLink(ctx.from)} has reported [${reportedName}](tg://user?id=${userID}). Original Caption: ${ctx.callbackQuery.message.caption || ''}`
             , parse_mode: "Markdown"
         });
     ctx.answerCbQuery('User has been reported');
@@ -207,4 +213,3 @@ function loadState() {
 
 bot.launch();
 loadState();
-bot.launch();
