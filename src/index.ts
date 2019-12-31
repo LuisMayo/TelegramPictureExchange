@@ -87,7 +87,7 @@ bot.use(ctx => {
                 status: Status.REPLY,
                 extraInfo: new ReplyInfo(bot.telegram, ctx.callbackQuery.data.substring(ctx.callbackQuery.data.indexOf(':') + 1)),
             });
-            ctx.reply('Please send your reply. You can use /cancel to abort the text');
+            ctx.reply('Please send your reply. You can use text or an image. You can use /cancel to abort the text');
         }
     }
 })
