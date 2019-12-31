@@ -3,11 +3,14 @@ import { PhotoSize, Message, User } from 'telegraf/typings/telegram-types';
 import * as Telegraf from 'telegraf';
 import { Status } from './Status';
 import { Conf } from './Conf';
+import { ReplyInfo } from './ReplyInfo';
+import { MessageTypes } from './MessageTypes';
+import { UserStatus } from './UserStatus';
 
 const version = '1.2.0';
 
 let lastPic: { id: string, caption: string, user: number, messID: number, userName: string, chat: number };
-const userStatus = new  Map<number, {status: Status, extraInfo: ReplyInfo}>();
+const userStatusMap = new Map<number, UserStatus>();
 
 const confPath = process.argv[2] || './conf';
 // const Telegraf = require('telegraf');
@@ -20,20 +23,29 @@ bot.start(ctx => {
 });
 bot.on('photo', (ctx) => {
     console.log('New photo! at ' + new Date().toString());
-    checkPermissionsAndExecute(ctx, resendPic);
+    if (!userStatusMap.has(ctx.from.id)) {
+        checkPermissionsAndExecute(ctx, resendPic);
+    } else {
+        checkPermissionsAndExecute(ctx, processImageReply)
+    }
 });
 
 bot.command('version', ctx => {
     ctx.reply(version);
 });
 
-bot.command('admin', ctx=> {
+bot.command('cancel', ctx => {
+    userStatusMap.delete(ctx.from.id);
+    ctx.reply('Operation cancelled')
+});
+
+bot.command('admin', ctx => {
     const text = ctx.message.text.split('admin').pop();
     if (!text || text.trim() === '') {
-        ctx.reply('You must specify the message. For example: `/admin I love you`', {parse_mode: 'Markdown'})
+        ctx.reply('You must specify the message. For example: `/admin I love you`', { parse_mode: 'Markdown' })
     } else {
         bot.telegram.sendMessage(conf.adminChat, `User ${makeUserLink(ctx.from)} has sent you the following message:
-${text.trim()}`, {parse_mode: "Markdown"});
+${text.trim()}`, { parse_mode: "Markdown" });
         ctx.reply('Message to the admin has been sent');
     }
 });
@@ -62,9 +74,21 @@ bot.command('unban', (ctx) => {
     }
 });
 
+bot.on('text', ctx => {
+    checkPermissionsAndExecute(ctx, processTextReply);
+});
+
 bot.use(ctx => {
-    if (ctx.callbackQuery && ctx.callbackQuery.data.startsWith('report:')) {
-        checkPermissionsAndExecute(ctx, report);
+    if (ctx.callbackQuery) {
+        if (ctx.callbackQuery.data.startsWith('report:')) {
+            checkPermissionsAndExecute(ctx, report);
+        } else if (ctx.callbackQuery.data.startsWith('reply:')) {
+            userStatusMap.set(ctx.from.id, {
+                status: Status.REPLY,
+                extraInfo: new ReplyInfo(bot.telegram, ctx.callbackQuery.data.substring(ctx.callbackQuery.data.indexOf(':') + 1)),
+            });
+            ctx.reply('Please send your reply. You can use /cancel to abort the text');
+        }
     }
 })
 
@@ -72,6 +96,38 @@ process.on('SIGINT', function () {
     saveState();
     process.exit(0);
 });
+
+function processTextReply(ctx: Telegraf.ContextMessageUpdate) {
+    processReply(ctx, (ctx, userStatus) => {
+        userStatus.extraInfo.Reply(ctx.message.text, MessageTypes.TEXT);
+    });
+}
+
+function processImageReply(ctx: Telegraf.ContextMessageUpdate) {
+    processReply(ctx, (ctx, userStatus) => {
+        userStatus.extraInfo.Reply(ctx.message.caption, MessageTypes.IMAGE, getBestPhoto(ctx.message).file_id);
+        if (conf.resendAll) {
+            bot.telegram.sendPhoto(conf.adminChat, getBestPhoto(ctx.message).file_id,
+            {caption: `User ${ctx.from.id} ${makeUserLink(ctx.from)}, original caption: ${ctx.message.caption || ''}`, parse_mode: 'Markdown'})
+        }
+    });
+}
+
+function processReply(ctx: Telegraf.ContextMessageUpdate, fn:(ctx: Telegraf.ContextMessageUpdate, userStatus: UserStatus) => void) {
+    if (userStatusMap.has(ctx.from.id)) {
+        const userStatus = userStatusMap.get(ctx.from.id);
+        if (userStatus.status === Status.REPLY) {
+            if (conf.extendedLog) {
+                const additionalText = conf.resendAll && ctx.message.text ? ': '+ ctx.message.text : '';
+                bot.telegram.sendMessage(conf.adminChat, `User ${makeUserLink(ctx.from)} has made a response to ${userStatus.extraInfo.getRecipentText()}${additionalText}`,
+                {parse_mode: 'Markdown'})
+            }
+            fn(ctx, userStatus);
+            ctx.reply('Answer sent');
+            userStatusMap.delete(ctx.from.id);
+        }
+    }
+}
 
 async function report(ctx: Telegraf.ContextMessageUpdate) {
     const userID = ctx.callbackQuery.data.substring(7);
@@ -110,10 +166,12 @@ function resendPic(ctx: Telegraf.ContextMessageUpdate) {
     } else {
         // Envíamos la foto B al usuario A
         // @ts-ignore
-        bot.telegram.sendPhoto(lastPic.chat, bestPhoto.file_id, Telegraf.Extra.load({ caption: ctx.message.caption }).markup(makeKeyboard(ctx.from.id)));
+        bot.telegram.sendPhoto(lastPic.chat, bestPhoto.file_id, Telegraf.Extra.load({ caption: ctx.message.caption })
+            .markup(makeKeyboard(ctx.from.id, { messID: ctx.message.message_id, chatID: ctx.chat.id })));
         // Envíamos la foto A al usuario B
         // @ts-ignore
-        bot.telegram.sendPhoto(ctx.chat.id, lastPic.id, Telegraf.Extra.load({ caption: lastPic.caption }).markup(makeKeyboard(lastPic.user)));
+        bot.telegram.sendPhoto(ctx.chat.id, lastPic.id, Telegraf.Extra.load({ caption: lastPic.caption })
+            .markup(makeKeyboard(lastPic.user, { messID: lastPic.messID, chatID: lastPic.chat })));
         if (conf.extendedLog) {
             bot.telegram.sendMessage(conf.adminChat, `User ${makeUserLink(ctx.from)} has exchanged pictures with [${lastPic.userName}](tg://user?id=${lastPic.user})`,
                 { parse_mode: 'Markdown' });
@@ -129,6 +187,7 @@ function resendPic(ctx: Telegraf.ContextMessageUpdate) {
     }
 }
 
+
 function makeUserLink(usr: User) {
     return `[${usr.first_name}](tg://user?id=${usr.id})`
 }
@@ -143,11 +202,12 @@ function getBestPhoto(ctx: Message) {
     return bestPhoto;
 }
 
-function makeKeyboard(ctx: Telegraf.ContextMessageUpdate) {
+function makeKeyboard(userID: number, messInfo: { chatID: number, messID: number }) {
     const keyboard = Telegraf.Markup.inlineKeyboard([
-        Telegraf.Markup.callbackButton("Report", "report:" + ctx)
+        Telegraf.Markup.callbackButton("Report", "report:" + userID),
+        Telegraf.Markup.callbackButton("Reply", "reply:" + messInfo.chatID + ':' + messInfo.messID)
     ]);
-    return keyboard
+    return keyboard;
 }
 
 function saveWarning(id: string) {
@@ -206,12 +266,12 @@ function getUserByID(id: string) {
 
 function saveState() {
     const save = JSON.stringify(lastPic);
-    fs.writeFileSync(confPath + '/lastPic.json', save, {encoding: 'UTF-8'});
+    fs.writeFileSync(confPath + '/lastPic.json', save, { encoding: 'UTF-8' });
 }
 
 function loadState() {
     try {
-        const load = fs.readFileSync(confPath + '/lastPic.json', {encoding: 'UTF-8'});
+        const load = fs.readFileSync(confPath + '/lastPic.json', { encoding: 'UTF-8' });
         lastPic = JSON.parse(load)
     } catch (e) {
         lastPic = null;
