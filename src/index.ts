@@ -1,17 +1,13 @@
 import * as fs from 'fs';
 import { PhotoSize, Message, User } from 'telegraf/typings/telegram-types';
 import * as Telegraf from 'telegraf';
+import { Status } from './Status';
+import { Conf } from './Conf';
 
 const version = '1.1.0';
 
-type Conf = {
-    token: string;
-    adminChat: string;
-    resendAll: boolean;
-    extendedLog: boolean;
-}
-
 let lastPic: { id: string, caption: string, user: number, messID: number, userName: string, chat: number };
+const userStatus = new  Map<number, {status: Status, extraInfo: ReplyInfo}>();
 
 const confPath = process.argv[2] || './conf';
 // const Telegraf = require('telegraf');
