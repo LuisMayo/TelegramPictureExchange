@@ -21,6 +21,16 @@ const bot = new Telegraf.default(conf.token);
 bot.start(ctx => {
     ctx.reply('Hi! This bot can be used for exchanging pictures with random users!\nTo start just sent me a picture, caption can be provided')
 });
+
+bot.command('send', (ctx) => {
+    if (ctx.chat.id === +conf.adminChat) {
+        let args = ctx.message.text.split(' ');
+        bot.telegram.sendMessage(args[1], 'Message from bot admin: ' + args.slice(2).join(' ') + '\nYou can answer to them using /admin your message').then(mess => {
+            ctx.reply('Message sent proprerly');
+        });
+    }
+});
+
 bot.on('photo', (ctx) => {
     console.log('New photo! at ' + new Date().toString());
     if (!userStatusMap.has(ctx.from.id)) {
