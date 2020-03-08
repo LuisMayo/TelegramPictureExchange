@@ -63,16 +63,18 @@ ${text.trim()}`, { parse_mode: "Markdown" });
 bot.command('warn', (ctx) => {
     if (ctx.chat.id === +conf.adminChat) {
         let args = ctx.message.text.split(' ');
-        bot.telegram.sendMessage(args[1], 'You\'ve been warned: ' + args.slice(2).join(' '));
-        saveWarning(args[1]);
+        Promise.all([bot.telegram.sendMessage(args[1], 'You\'ve been warned: ' + args.slice(2).join(' ')), saveWarning(args[1])]).then(() => 
+            bot.telegram.sendMessage(conf.adminChat, 'User warned correctly')
+        );
     }
 });
 
 bot.command('ban', (ctx) => {
     if (ctx.chat.id === +conf.adminChat) {
         let args = ctx.message.text.split(' ');
-        bot.telegram.sendMessage(args[1], 'You\'ve been banned: ' + args.slice(2).join(' '));
-        saveBan(args[1]);
+        Promise.all([bot.telegram.sendMessage(args[1], 'You\'ve been banned: ' + args.slice(2).join(' ')), saveBan(args[1])]).then(() => 
+            bot.telegram.sendMessage(conf.adminChat, 'User banned correctly')
+        )
     }
 });
 
@@ -221,21 +223,24 @@ function makeKeyboard(userID: number, messInfo: { chatID: number, messID: number
 }
 
 function saveWarning(id: string) {
-    db.select({ table: 'users', where: { id: id } }, (err, users) => {
-        if (users && users.length > 0) {
-            db.update('users', { id: +id }, { warnings: users[0].warnings + 1, lastWarningDate: new Date().toString() });
-            bot.telegram.sendMessage(conf.adminChat, 'User warned correctly');
-        }
+    return new Promise((resolve, reject) => {
+        db.select({ table: 'users', where: { id: id } }, (err, users) => {
+            if (users && users.length > 0) {
+                db.update('users', { id: +id }, { warnings: users[0].warnings + 1, lastWarningDate: new Date().toString() }, () => resolve());
+            }
+        });
     });
 }
 
 function saveBan(id: string) {
-    try {
-        db.update('users', { id: +id }, { banned: 1, banDate: new Date().toString() });
-        bot.telegram.sendMessage(conf.adminChat, 'User banned correctly');
-    } catch (e) {
-        console.log(e);
-    }
+    return new Promise((resolve, reject) => {
+        try {
+            db.update('users', { id: +id }, { banned: 1, banDate: new Date().toString() }, () => resolve());
+        } catch (e) {
+            console.log(e);
+            reject();
+        }
+    });
 }
 
 function unban(id: string) {
