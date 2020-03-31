@@ -23,6 +23,6 @@ export class ReplyInfo {
     }
 
     public getRecipentText() {
-        return `chat [${this.chatID}](tg://user?id=${this.chatID})`
+        return `[Other user](tg://user?id=${this.chatID}) \`${this.chatID}\``
     }
 }

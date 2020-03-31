@@ -131,7 +131,7 @@ function processReply(ctx: Telegraf.ContextMessageUpdate, fn:(ctx: Telegraf.Cont
         if (userStatus.status === Status.REPLY) {
             if (conf.extendedLog) {
                 const additionalText = conf.resendAll && ctx.message.text ? ': '+ ctx.message.text : '';
-                bot.telegram.sendMessage(conf.adminChat, `User ${makeUserLink(ctx.from)} has made a response to ${userStatus.extraInfo.getRecipentText()}${additionalText}`,
+                bot.telegram.sendMessage(conf.adminChat, `User ${makeUserLink(ctx.from)} has made a response to ${userStatus.extraInfo.getRecipentText()}: ${additionalText}`,
                 {parse_mode: 'Markdown'})
             }
             fn(ctx, userStatus);
@@ -146,7 +146,7 @@ async function report(ctx: Telegraf.ContextMessageUpdate) {
     const reportedName = await getUserByID(userID)
     bot.telegram.sendPhoto(conf.adminChat, getBestPhoto(ctx.callbackQuery.message).file_id,
         {
-            caption: `User ${makeUserLink(ctx.from)} has reported [${reportedName}](tg://user?id=${userID}). Original Caption: ${ctx.callbackQuery.message.caption || ''}`
+            caption: `User ${makeUserLink(ctx.from)} has reported [${reportedName}](tg://user?id=${userID}) \`${userID}\`. Original Caption: ${ctx.callbackQuery.message.caption || ''}`
             , parse_mode: "Markdown"
         });
     ctx.answerCbQuery('User has been reported');
@@ -185,7 +185,7 @@ function resendPic(ctx: Telegraf.ContextMessageUpdate) {
         bot.telegram.sendPhoto(ctx.chat.id, lastPic.id, Telegraf.Extra.load({ caption: lastPic.caption })
             .markup(makeKeyboard(lastPic.user, { messID: lastPic.messID, chatID: lastPic.chat })));
         if (conf.extendedLog) {
-            bot.telegram.sendMessage(conf.adminChat, `User ${makeUserLink(ctx.from)} has exchanged pictures with [${lastPic.userName}](tg://user?id=${lastPic.user})`,
+            bot.telegram.sendMessage(conf.adminChat, `User ${makeUserLink(ctx.from)} has exchanged pictures with [${lastPic.userName}](tg://user?id=${lastPic.user}) \`${lastPic.user}\``,
                 { parse_mode: 'Markdown' });
         }
         lastPic = null;
@@ -201,7 +201,7 @@ function resendPic(ctx: Telegraf.ContextMessageUpdate) {
 
 
 function makeUserLink(usr: User) {
-    return `[${usr.first_name}](tg://user?id=${usr.id})`
+    return `[${usr.first_name}](tg://user?id=${usr.id}) \`${usr.id}\``
 }
 
 function getBestPhoto(ctx: Message) {
