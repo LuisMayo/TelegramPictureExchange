@@ -295,5 +295,5 @@ function loadState() {
 
 setInterval(saveState, conf.backupInterval * 1000);
 
-bot.launch();
 loadState();
+bot.launch();
