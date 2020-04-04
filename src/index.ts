@@ -7,7 +7,7 @@ import { ReplyInfo } from './ReplyInfo';
 import { MessageTypes } from './MessageTypes';
 import { UserStatus } from './UserStatus';
 
-const version = '1.2.0';
+const version = '1.2.1';
 
 let lastPic: { id: string, caption: string, user: number, messID: number, userName: string, chat: number };
 const userStatusMap = new Map<number, UserStatus>();
