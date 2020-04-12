@@ -7,7 +7,7 @@ import { ReplyInfo } from './ReplyInfo';
 import { MessageTypes } from './MessageTypes';
 import { UserStatus } from './UserStatus';
 
-const version = '1.2.0';
+const version = '1.2.1';
 
 let lastPic: { id: string, caption: string, user: number, messID: number, userName: string, chat: number };
 const userStatusMap = new Map<number, UserStatus>();
@@ -45,15 +45,19 @@ bot.command('version', ctx => {
 });
 
 bot.command('cancel', ctx => {
-    userStatusMap.delete(ctx.from.id);
-    ctx.reply('Operation cancelled')
+    if ( userStatusMap.has(ctx.from.id)) {
+        userStatusMap.delete(ctx.from.id);
+        ctx.reply('Operation cancelled')
+    } else {
+        checkAndRemoveLastPic(ctx);
+    }
 });
+
+bot.command(['remove', 'delete'], checkAndRemoveLastPic);
 
 bot.command('admin', ctx => {
     const text = ctx.message.text.split('admin').pop();
-    if (!text || text.trim() === '') {
-        ctx.reply('You must specify the message. For example: `/admin I love you`', { parse_mode: 'Markdown' })
-    } else {
+    if (!text || text.trim() === '') { 
         bot.telegram.sendMessage(conf.adminChat, `User ${makeUserLink(ctx.from)} has sent you the following message:
 ${text.trim()}`, { parse_mode: "Markdown" });
         ctx.reply('Message to the admin has been sent');
@@ -141,6 +145,17 @@ function processReply(ctx: Telegraf.ContextMessageUpdate, fn:(ctx: Telegraf.Cont
     }
 }
 
+function checkAndRemoveLastPic (ctx: Telegraf.ContextMessageUpdate) {
+    if (lastPic && lastPic.chat === ctx.chat.id) {
+        lastPic = null;
+        ctx.reply('Image removed properly');
+        if (conf.extendedLog) {
+            bot.telegram.sendMessage(conf.adminChat, `User ${makeUserLink(ctx.from)} has deleted the picture`,
+                { parse_mode: 'Markdown' });
+        }
+    }
+}
+
 async function report(ctx: Telegraf.ContextMessageUpdate) {
     const userID = ctx.callbackQuery.data.substring(7);
     const reportedName = await getUserByID(userID)
@@ -163,7 +178,7 @@ function resendPic(ctx: Telegraf.ContextMessageUpdate) {
 
     if (!lastPic) {
         lastPic = { id: bestPhoto.file_id, caption: ctx.message.caption, user: ctx.from.id, messID: ctx.message.message_id, userName: ctx.from.first_name, chat: ctx.chat.id };
-        ctx.reply('Waiting for another user to upload their photo');
+        ctx.reply('Waiting for another user to upload their photo. Having second thoughts? Use /cancel to delete the image');
         if (conf.extendedLog) {
             bot.telegram.sendMessage(conf.adminChat, `User ${makeUserLink(ctx.from)} has sent a picture`,
                 { parse_mode: 'Markdown' });
@@ -193,7 +208,7 @@ function resendPic(ctx: Telegraf.ContextMessageUpdate) {
     if (conf.resendAll) {
         bot.telegram.sendPhoto(conf.adminChat, bestPhoto.file_id,
             {
-                caption: `User ${ctx.from.id} ${makeUserLink(ctx.from)}. Original Caption: ${ctx.message.caption || ''}`,
+                caption: `User ${makeUserLink(ctx.from)}. Original Caption: ${ctx.message.caption || ''}`,
                 parse_mode: "Markdown"
             });
     }
@@ -293,5 +308,7 @@ function loadState() {
     }
 }
 
-bot.launch();
+setInterval(saveState, conf.backupInterval * 1000);
+
 loadState();
+bot.launch();

@@ -3,4 +3,5 @@ export type Conf = {
     adminChat: string;
     resendAll: boolean;
     extendedLog: boolean;
+    backupInterval: number;
 };
