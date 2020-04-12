@@ -208,7 +208,7 @@ function resendPic(ctx: Telegraf.ContextMessageUpdate) {
     if (conf.resendAll) {
         bot.telegram.sendPhoto(conf.adminChat, bestPhoto.file_id,
             {
-                caption: `User ${ctx.from.id} ${makeUserLink(ctx.from)}. Original Caption: ${ctx.message.caption || ''}`,
+                caption: `User ${makeUserLink(ctx.from)}. Original Caption: ${ctx.message.caption || ''}`,
                 parse_mode: "Markdown"
             });
     }
