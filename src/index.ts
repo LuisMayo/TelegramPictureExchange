@@ -57,7 +57,9 @@ bot.command(['remove', 'delete'], checkAndRemoveLastPic);
 
 bot.command('admin', ctx => {
     const text = ctx.message.text.split('admin').pop();
-    if (!text || text.trim() === '') { 
+    if (!text || text.trim() === '') {
+        ctx.reply('You must specify the message. For example: `/admin I love you`', { parse_mode: 'Markdown' })
+    } else {
         bot.telegram.sendMessage(conf.adminChat, `User ${makeUserLink(ctx.from)} has sent you the following message:
 ${text.trim()}`, { parse_mode: "Markdown" });
         ctx.reply('Message to the admin has been sent');
