@@ -137,7 +137,7 @@ function processReply(ctx: Telegraf.ContextMessageUpdate, fn:(ctx: Telegraf.Cont
         if (userStatus.status === Status.REPLY) {
             if (conf.extendedLog) {
                 const additionalText = conf.resendAll && ctx.message.text ? ': '+ ctx.message.text : '';
-                bot.telegram.sendMessage(conf.adminChat, `User ${makeUserLink(ctx.from)} has made a response to [other user](tg://user?id=${userStatus.extraInfo.getRecipentText()}) \`${userStatus.extraInfo.getRecipentText()}\` ${additionalText}`,
+                bot.telegram.sendMessage(conf.adminChat, `User ${makeUserLink(ctx.from)} has made a response to ${userStatus.extraInfo.getRecipentText()}: ${additionalText}`,
                 {parse_mode: 'Markdown'})
             }
             fn(ctx, userStatus);
