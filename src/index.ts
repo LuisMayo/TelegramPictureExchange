@@ -187,7 +187,7 @@ function resendPic(ctx: Telegraf.ContextMessageUpdate) {
         }
     } else if (lastPic.chat === ctx.chat.id) {
         lastPic = { id: bestPhoto.file_id, caption: ctx.message.caption, user: ctx.from.id, messID: ctx.message.message_id, userName: ctx.from.first_name, chat: ctx.chat.id };
-        ctx.reply('You already uploaded a photo before. I\'ll send this one instead of the previous');
+        ctx.reply('You already uploaded a photo before. I\'ll send this one instead of the previous. Having second thoughts? Use /cancel to delete the image');
         if (conf.extendedLog) {
             bot.telegram.sendMessage(conf.adminChat, `User ${makeUserLink(ctx.from)} has overwritten a sent picture`,
                 { parse_mode: 'Markdown' });
