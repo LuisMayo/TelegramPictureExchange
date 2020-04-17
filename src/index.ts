@@ -272,7 +272,7 @@ function unban(id: string) {
 function checkPermissionsAndExecute(ctx: Telegraf.ContextMessageUpdate, fn: ((ctx: Telegraf.ContextMessageUpdate) => any)) {
     db.select({ table: 'users', where: { id: ctx.from.id } }, (err, users) => {
         if (!users || users.length <= 0) {
-            db.insert('users', { id: ctx.from.id, username: ctx.from.username });
+            db.insert('users', { id: ctx.from.id, username: ctx.from.first_name });
             fn(ctx);
         } else {
             if (users[0].banned === 1) {
