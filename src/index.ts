@@ -8,6 +8,7 @@ import { MessageTypes } from './MessageTypes';
 import { UserStatus } from './UserStatus';
 import { ReportInfo } from './reportInfo';
 import { Utils } from './utils';
+import { DatabaseHelper } from './db-helper';
 
 const version = '1.2.1';
 
@@ -15,9 +16,8 @@ let lastPic: { id: string, caption: string, user: number, messID: number, userNa
 const userStatusMap = new Map<number, UserStatus>();
 
 const confPath = process.argv[2] || './conf';
-// const Telegraf = require('telegraf');
+const dbHelper = new DatabaseHelper(confPath);
 const conf: Conf = JSON.parse(fs.readFileSync(confPath + '/conf.json', { encoding: 'UTF-8' }));
-const db = require('sqlite3-wrapper').open(confPath + '/exchangeBotDB.db');
 const bot = new Telegraf.default(conf.token);
 
 bot.start(ctx => {
@@ -189,11 +189,7 @@ function processReport(ctx: Telegraf.ContextMessageUpdate) {
 
 function resendPic(ctx: Telegraf.ContextMessageUpdate) {
     let bestPhoto: PhotoSize;
-    db.select({ table: 'users', where: { id: ctx.from.id } }, (err, users) => {
-        if (!users || users.length <= 0) {
-            db.insert('users', { id: ctx.from.id, username: ctx.from.first_name });
-        }
-    });
+    dbHelper.insertUserIntoDB(ctx.from);
     bestPhoto = getBestPhoto(ctx.message);
 
     if (!lastPic) {
@@ -258,60 +254,24 @@ function makeKeyboard(userID: number, messInfo: { chatID: number, messID: number
 }
 
 function saveWarning(id: string) {
-    return new Promise((resolve, reject) => {
-        db.select({ table: 'users', where: { id: id } }, (err, users) => {
-            if (users && users.length > 0) {
-                db.update('users', { id: +id }, { warnings: users[0].warnings + 1, lastWarningDate: new Date().toString() }, () => resolve());
-            }
-        });
-    });
+    return dbHelper.saveWarning(id);
 }
 
 function saveBan(id: string) {
-    return new Promise((resolve, reject) => {
-        try {
-            db.update('users', { id: +id }, { banned: 1, banDate: new Date().toString() }, () => resolve());
-        } catch (e) {
-            console.log(e);
-            reject();
-        }
-    });
+    return dbHelper.saveWarning(id);
 }
 
 function unban(id: string) {
-    try {
-        db.update('users', { id: +id }, { banned: 0 });
-    } catch (e) {
-        console.log(e);
-    }
+    return dbHelper.saveBan(id);
 }
 
 
 function checkPermissionsAndExecute(ctx: Telegraf.ContextMessageUpdate, fn: ((ctx: Telegraf.ContextMessageUpdate) => any)) {
-    db.select({ table: 'users', where: { id: ctx.from.id } }, (err, users) => {
-        if (!users || users.length <= 0) {
-            db.insert('users', { id: ctx.from.id, username: ctx.from.first_name });
-            fn(ctx);
-        } else {
-            if (users[0].banned === 1) {
-                ctx.reply('You have banned from further use of this bot');
-            } else {
-                fn(ctx);
-            }
-        }
-    });
+    dbHelper.checkPermissionsAndExecute(ctx, fn);
 }
 
 function getUserByID(id: string) {
-    return new Promise(resolve => {
-        db.select({ table: 'users', where: { id: id } }, (err, users) => {
-            if (!users || users.length <= 0) {
-                resolve(null);
-            } else {
-                resolve(users[0].username);
-            }
-        });
-    });
+    return dbHelper.getUserByID(id);
 }
 
 function saveState() {
