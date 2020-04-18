@@ -24,32 +24,29 @@ bot.start(ctx => {
     ctx.reply('Hi! This bot can be used for exchanging pictures with random users!\nTo start just sent me a picture, caption can be provided')
 });
 
-bot.command('send', (ctx) => {
+// Bot commands
+bot.command('admin', ctx => {
+    const text = ctx.message.text.split('admin').pop();
+    if (!text || text.trim() === '') {
+        ctx.reply('You must specify the message. For example: `/admin I love you`', { parse_mode: 'Markdown' })
+    } else {
+        bot.telegram.sendMessage(conf.adminChat, `User ${makeUserLink(ctx.from)} has sent you the following message:
+        ${text.trim()}`, { parse_mode: "Markdown" });
+        ctx.reply('Message to the admin has been sent');
+    }
+});
+
+bot.command('ban', (ctx) => {
     if (ctx.chat.id === +conf.adminChat) {
         let args = ctx.message.text.split(' ');
-        bot.telegram.sendMessage(args[1], 'Message from bot admin: ' + args.slice(2).join(' ') + '\nYou can answer to them using /admin your message').then(mess => {
-            ctx.reply('Message sent proprerly');
-        });
+        Promise.all([bot.telegram.sendMessage(args[1], 'You\'ve been banned: ' + args.slice(2).join(' ')), saveBan(args[1])]).then(() =>
+            bot.telegram.sendMessage(conf.adminChat, 'User banned correctly')
+        )
     }
-});
-
-bot.on('photo', (ctx) => {
-    console.log('New photo! at ' + new Date().toString());
-    if (!userStatusMap.has(ctx.from.id)) {
-        checkPermissionsAndExecute(ctx, resendPic);
-    } else if(userStatusMap.get(ctx.from.id).status === Status.REPLY){
-        checkPermissionsAndExecute(ctx, processImageReply)
-    } else {
-        ctx.reply('Finish or /cancel the current operation before sending a pic');
-    }
-});
-
-bot.command('version', ctx => {
-    ctx.reply(version);
 });
 
 bot.command('cancel', ctx => {
-    if ( userStatusMap.has(ctx.from.id)) {
+    if (userStatusMap.has(ctx.from.id)) {
         userStatusMap.delete(ctx.from.id);
         ctx.reply('Operation cancelled')
     } else {
@@ -59,32 +56,12 @@ bot.command('cancel', ctx => {
 
 bot.command(['remove', 'delete'], checkAndRemoveLastPic);
 
-bot.command('admin', ctx => {
-    const text = ctx.message.text.split('admin').pop();
-    if (!text || text.trim() === '') {
-        ctx.reply('You must specify the message. For example: `/admin I love you`', { parse_mode: 'Markdown' })
-    } else {
-        bot.telegram.sendMessage(conf.adminChat, `User ${makeUserLink(ctx.from)} has sent you the following message:
-${text.trim()}`, { parse_mode: "Markdown" });
-        ctx.reply('Message to the admin has been sent');
-    }
-});
-
-bot.command('warn', (ctx) => {
+bot.command('send', (ctx) => {
     if (ctx.chat.id === +conf.adminChat) {
         let args = ctx.message.text.split(' ');
-        Promise.all([bot.telegram.sendMessage(args[1], 'You\'ve been warned: ' + args.slice(2).join(' ')), saveWarning(args[1])]).then(() => 
-            bot.telegram.sendMessage(conf.adminChat, 'User warned correctly')
-        );
-    }
-});
-
-bot.command('ban', (ctx) => {
-    if (ctx.chat.id === +conf.adminChat) {
-        let args = ctx.message.text.split(' ');
-        Promise.all([bot.telegram.sendMessage(args[1], 'You\'ve been banned: ' + args.slice(2).join(' ')), saveBan(args[1])]).then(() => 
-            bot.telegram.sendMessage(conf.adminChat, 'User banned correctly')
-        )
+        bot.telegram.sendMessage(args[1], 'Message from bot admin: ' + args.slice(2).join(' ') + '\nYou can answer to them using /admin your message').then(mess => {
+            ctx.reply('Message sent proprerly');
+        });
     }
 });
 
@@ -96,10 +73,36 @@ bot.command('unban', (ctx) => {
     }
 });
 
+bot.command('version', ctx => {
+    ctx.reply(version);
+});
+
+bot.command('warn', (ctx) => {
+    if (ctx.chat.id === +conf.adminChat) {
+        let args = ctx.message.text.split(' ');
+        Promise.all([bot.telegram.sendMessage(args[1], 'You\'ve been warned: ' + args.slice(2).join(' ')), saveWarning(args[1])]).then(() =>
+            bot.telegram.sendMessage(conf.adminChat, 'User warned correctly')
+        );
+    }
+});
+// Bot commands end
+
+// Bot handlers
+bot.on('photo', (ctx) => {
+    console.log('New photo! at ' + new Date().toString());
+    if (!userStatusMap.has(ctx.from.id)) {
+        checkPermissionsAndExecute(ctx, resendPic);
+    } else if (userStatusMap.get(ctx.from.id).status === Status.REPLY) {
+        checkPermissionsAndExecute(ctx, processImageReply)
+    } else {
+        ctx.reply('Finish or /cancel the current operation before sending a pic');
+    }
+});
+
 bot.on('text', ctx => {
     if (userStatusMap.has(ctx.from.id)) {
         const status = userStatusMap.get(ctx.from.id);
-        switch(status.status) {
+        switch (status.status) {
             case Status.REPLY:
                 checkPermissionsAndExecute(ctx, processTextReply);
                 break;
@@ -124,35 +127,32 @@ bot.use(ctx => {
     }
 })
 
+// Bot handlers end
+
 process.on('SIGINT', function () {
     saveState();
     process.exit(0);
 });
 
-function processTextReply(ctx: Telegraf.ContextMessageUpdate) {
-    processReply(ctx, (ctx, userStatus) => {
-        userStatus.extraInfo.Reply(ctx.message.text, MessageTypes.TEXT);
-    });
-}
-
+/// Process Reply
 function processImageReply(ctx: Telegraf.ContextMessageUpdate) {
     processReply(ctx, (ctx, userStatus) => {
         userStatus.extraInfo.Reply(ctx.message.caption, MessageTypes.IMAGE, getBestPhoto(ctx.message).file_id);
         if (conf.resendAll) {
             bot.telegram.sendPhoto(conf.adminChat, getBestPhoto(ctx.message).file_id,
-            {caption: `User ${ctx.from.id} ${makeUserLink(ctx.from)}, original caption: ${ctx.message.caption || ''}`, parse_mode: 'Markdown'})
+                { caption: `User ${ctx.from.id} ${makeUserLink(ctx.from)}, original caption: ${ctx.message.caption || ''}`, parse_mode: 'Markdown' })
         }
     });
 }
 
-function processReply(ctx: Telegraf.ContextMessageUpdate, fn:(ctx: Telegraf.ContextMessageUpdate, userStatus: UserStatus) => void) {
+function processReply(ctx: Telegraf.ContextMessageUpdate, fn: (ctx: Telegraf.ContextMessageUpdate, userStatus: UserStatus) => void) {
     if (userStatusMap.has(ctx.from.id)) {
         const userStatus = userStatusMap.get(ctx.from.id);
         if (userStatus.status === Status.REPLY) {
             if (conf.extendedLog) {
-                const additionalText = conf.resendAll && ctx.message.text ? ': '+ ctx.message.text : '';
+                const additionalText = conf.resendAll && ctx.message.text ? ': ' + ctx.message.text : '';
                 bot.telegram.sendMessage(conf.adminChat, `User ${makeUserLink(ctx.from)} has made a response to ${userStatus.extraInfo.getRecipentText()}: ${additionalText}`,
-                {parse_mode: 'Markdown'})
+                    { parse_mode: 'Markdown' })
             }
             fn(ctx, userStatus);
             ctx.reply('Answer sent');
@@ -161,7 +161,60 @@ function processReply(ctx: Telegraf.ContextMessageUpdate, fn:(ctx: Telegraf.Cont
     }
 }
 
-function checkAndRemoveLastPic (ctx: Telegraf.ContextMessageUpdate) {
+function processTextReply(ctx: Telegraf.ContextMessageUpdate) {
+    processReply(ctx, (ctx, userStatus) => {
+        userStatus.extraInfo.Reply(ctx.message.text, MessageTypes.TEXT);
+    });
+}
+// Process Reply end
+async function saveReportState(ctx: Telegraf.ContextMessageUpdate) {
+    const userID = ctx.callbackQuery.data.substring(7);
+    const reportedName = await getUserByID(userID);
+    const reportInfo = new ReportInfo(ctx.callbackQuery.message.caption, getBestPhoto(ctx.callbackQuery.message).file_id, ctx.from, <string | null>reportedName, userID, bot, conf.adminChat);
+    ctx.reply('Please specify the report reason. You can use /cancel to abort the operation');
+    ctx.answerCbQuery();
+    userStatusMap.set(ctx.from.id, { status: Status.REPORT, extraReportInfo: reportInfo });
+}
+
+function processReport(ctx: Telegraf.ContextMessageUpdate) {
+    const status = userStatusMap.get(ctx.from.id);
+    status.extraReportInfo.sendReport(ctx.message.text).then(value => ctx.reply('Report sent'), error => ctx.reply('Report couldn\'t ve sent'));
+    userStatusMap.delete(ctx.from.id);
+}
+// Process report
+
+
+// Warning and ban zone
+function saveWarning(id: string) {
+    return dbHelper.saveWarning(id);
+}
+
+function saveBan(id: string) {
+    return dbHelper.saveWarning(id);
+}
+
+function unban(id: string) {
+    return dbHelper.saveBan(id);
+}
+// End
+
+// State zone
+function saveState() {
+    const save = JSON.stringify(lastPic);
+    fs.writeFileSync(confPath + '/lastPic.json', save, { encoding: 'UTF-8' });
+}
+
+function loadState() {
+    try {
+        const load = fs.readFileSync(confPath + '/lastPic.json', { encoding: 'UTF-8' });
+        lastPic = JSON.parse(load)
+    } catch (e) {
+        lastPic = null;
+    }
+}
+// End
+
+function checkAndRemoveLastPic(ctx: Telegraf.ContextMessageUpdate) {
     if (lastPic && lastPic.chat === ctx.chat.id) {
         lastPic = null;
         ctx.reply('Image removed properly');
@@ -172,19 +225,34 @@ function checkAndRemoveLastPic (ctx: Telegraf.ContextMessageUpdate) {
     }
 }
 
-async function saveReportState(ctx: Telegraf.ContextMessageUpdate) {
-    const userID = ctx.callbackQuery.data.substring(7);
-    const reportedName = await getUserByID(userID);
-    const reportInfo = new ReportInfo(ctx.callbackQuery.message.caption, getBestPhoto(ctx.callbackQuery.message).file_id, ctx.from, <string | null>reportedName, userID, bot, conf.adminChat);
-    ctx.reply('Please specify the report reason. You can use /cancel to abort the operation');
-    ctx.answerCbQuery();
-    userStatusMap.set(ctx.from.id, {status: Status.REPORT, extraReportInfo: reportInfo});
+function checkPermissionsAndExecute(ctx: Telegraf.ContextMessageUpdate, fn: ((ctx: Telegraf.ContextMessageUpdate) => any)) {
+    dbHelper.checkPermissionsAndExecute(ctx, fn);
 }
 
-function processReport(ctx: Telegraf.ContextMessageUpdate) {
-    const status = userStatusMap.get(ctx.from.id);
-    status.extraReportInfo.sendReport(ctx.message.text).then(value => ctx.reply('Report sent'), error => ctx.reply('Report couldn\'t ve sent'));
-    userStatusMap.delete(ctx.from.id);
+function getBestPhoto(ctx: Message) {
+    let bestPhoto: PhotoSize;
+    for (const photo of ctx.photo) {
+        if (!bestPhoto || bestPhoto.file_size < photo.file_size) {
+            bestPhoto = photo;
+        }
+    }
+    return bestPhoto;
+}
+
+function getUserByID(id: string) {
+    return dbHelper.getUserByID(id);
+}
+
+function makeKeyboard(userID: number, messInfo: { chatID: number, messID: number }) {
+    const keyboard = Telegraf.Markup.inlineKeyboard([
+        Telegraf.Markup.callbackButton("Report", "report:" + userID),
+        Telegraf.Markup.callbackButton("Reply", "reply:" + messInfo.chatID + ':' + messInfo.messID)
+    ]);
+    return keyboard;
+}
+
+function makeUserLink(usr: User) {
+    return Utils.makeUserLink(usr);
 }
 
 function resendPic(ctx: Telegraf.ContextMessageUpdate) {
@@ -230,65 +298,6 @@ function resendPic(ctx: Telegraf.ContextMessageUpdate) {
     }
 }
 
-
-function makeUserLink(usr: User) {
-    return Utils.makeUserLink(usr);
-}
-
-function getBestPhoto(ctx: Message) {
-    let bestPhoto: PhotoSize;
-    for (const photo of ctx.photo) {
-        if (!bestPhoto || bestPhoto.file_size < photo.file_size) {
-            bestPhoto = photo;
-        }
-    }
-    return bestPhoto;
-}
-
-function makeKeyboard(userID: number, messInfo: { chatID: number, messID: number }) {
-    const keyboard = Telegraf.Markup.inlineKeyboard([
-        Telegraf.Markup.callbackButton("Report", "report:" + userID),
-        Telegraf.Markup.callbackButton("Reply", "reply:" + messInfo.chatID + ':' + messInfo.messID)
-    ]);
-    return keyboard;
-}
-
-function saveWarning(id: string) {
-    return dbHelper.saveWarning(id);
-}
-
-function saveBan(id: string) {
-    return dbHelper.saveWarning(id);
-}
-
-function unban(id: string) {
-    return dbHelper.saveBan(id);
-}
-
-
-function checkPermissionsAndExecute(ctx: Telegraf.ContextMessageUpdate, fn: ((ctx: Telegraf.ContextMessageUpdate) => any)) {
-    dbHelper.checkPermissionsAndExecute(ctx, fn);
-}
-
-function getUserByID(id: string) {
-    return dbHelper.getUserByID(id);
-}
-
-function saveState() {
-    const save = JSON.stringify(lastPic);
-    fs.writeFileSync(confPath + '/lastPic.json', save, { encoding: 'UTF-8' });
-}
-
-function loadState() {
-    try {
-        const load = fs.readFileSync(confPath + '/lastPic.json', { encoding: 'UTF-8' });
-        lastPic = JSON.parse(load)
-    } catch (e) {
-        lastPic = null;
-    }
-}
-
 setInterval(saveState, conf.backupInterval * 1000);
-
 loadState();
 bot.launch();
