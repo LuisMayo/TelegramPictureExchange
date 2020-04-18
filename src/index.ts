@@ -6,6 +6,8 @@ import { Conf } from './Conf';
 import { ReplyInfo } from './ReplyInfo';
 import { MessageTypes } from './MessageTypes';
 import { UserStatus } from './UserStatus';
+import { ReportInfo } from './reportInfo';
+import { Utils } from './utils';
 
 const version = '1.2.1';
 
@@ -35,8 +37,10 @@ bot.on('photo', (ctx) => {
     console.log('New photo! at ' + new Date().toString());
     if (!userStatusMap.has(ctx.from.id)) {
         checkPermissionsAndExecute(ctx, resendPic);
-    } else {
+    } else if(userStatusMap.get(ctx.from.id).status === Status.REPLY){
         checkPermissionsAndExecute(ctx, processImageReply)
+    } else {
+        ctx.reply('Finish or /cancel the current operation before sending a pic');
     }
 });
 
@@ -93,13 +97,23 @@ bot.command('unban', (ctx) => {
 });
 
 bot.on('text', ctx => {
-    checkPermissionsAndExecute(ctx, processTextReply);
+    if (userStatusMap.has(ctx.from.id)) {
+        const status = userStatusMap.get(ctx.from.id);
+        switch(status.status) {
+            case Status.REPLY:
+                checkPermissionsAndExecute(ctx, processTextReply);
+                break;
+            case Status.REPORT:
+                checkPermissionsAndExecute(ctx, processReport);
+                break;
+        }
+    }
 });
 
 bot.use(ctx => {
     if (ctx.callbackQuery) {
         if (ctx.callbackQuery.data.startsWith('report:')) {
-            checkPermissionsAndExecute(ctx, report);
+            checkPermissionsAndExecute(ctx, saveReportState);
         } else if (ctx.callbackQuery.data.startsWith('reply:')) {
             userStatusMap.set(ctx.from.id, {
                 status: Status.REPLY,
@@ -158,15 +172,19 @@ function checkAndRemoveLastPic (ctx: Telegraf.ContextMessageUpdate) {
     }
 }
 
-async function report(ctx: Telegraf.ContextMessageUpdate) {
+async function saveReportState(ctx: Telegraf.ContextMessageUpdate) {
     const userID = ctx.callbackQuery.data.substring(7);
-    const reportedName = await getUserByID(userID)
-    bot.telegram.sendPhoto(conf.adminChat, getBestPhoto(ctx.callbackQuery.message).file_id,
-        {
-            caption: `User ${makeUserLink(ctx.from)} has reported [${reportedName}](tg://user?id=${userID}) \`${userID}\`. Original Caption: ${ctx.callbackQuery.message.caption || ''}`
-            , parse_mode: "Markdown"
-        });
-    ctx.answerCbQuery('User has been reported');
+    const reportedName = await getUserByID(userID);
+    const reportInfo = new ReportInfo(ctx.callbackQuery.message.caption, getBestPhoto(ctx.callbackQuery.message).file_id, ctx.from, <string | null>reportedName, userID, bot, conf.adminChat);
+    ctx.reply('Please specify the report reason. You can use /cancel to abort the operation');
+    ctx.answerCbQuery();
+    userStatusMap.set(ctx.from.id, {status: Status.REPORT, extraReportInfo: reportInfo});
+}
+
+function processReport(ctx: Telegraf.ContextMessageUpdate) {
+    const status = userStatusMap.get(ctx.from.id);
+    status.extraReportInfo.sendReport(ctx.message.text).then(value => ctx.reply('Report sent'), error => ctx.reply('Report couldn\'t ve sent'));
+    userStatusMap.delete(ctx.from.id);
 }
 
 function resendPic(ctx: Telegraf.ContextMessageUpdate) {
@@ -218,7 +236,7 @@ function resendPic(ctx: Telegraf.ContextMessageUpdate) {
 
 
 function makeUserLink(usr: User) {
-    return `[${usr.first_name}](tg://user?id=${usr.id}) \`${usr.id}\``
+    return Utils.makeUserLink(usr);
 }
 
 function getBestPhoto(ctx: Message) {
