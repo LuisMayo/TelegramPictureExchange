@@ -28,10 +28,19 @@ export class DatabaseHelper {
                 if (!users || users.length <= 0) {
                     resolve(null);
                 } else {
-                    resolve(users[0].username);
+                    resolve(users[0]);
                 }
             });
         });
+    }
+
+    async getUserNameByID(id: string) {
+        return (await this.getUserByID(id) as any).username;
+    }
+
+    async getWarningsNumber(id: string) {
+        const user: any = await this.getUserByID(id);
+        return user? user.warnings : null;
     }
 
     insertUserIntoDB(user: User) {
