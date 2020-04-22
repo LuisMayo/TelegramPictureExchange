@@ -1,9 +1,14 @@
 {
-    "comment":"Please copy me into 'conf.json' and fill the data",
+    "comment": "Please copy me into 'conf.json' and fill the data",
     "token": "YOUR-TOKEN-HERE",
     "adminChat": "YOUR ADMIN CHANNEL HERE",
     "resendAllComment": "If ResendAll is true, all files sent will be resent to the admin chat",
     "resendAll": false,
     "extendedLog": false,
-    "backupInterval": 300
+    "backupInterval": 300,
+    "modAnswers": [
+        "/warn ${reportedUser} Personal attacks are forbidden",
+        "/ban ${reportedUser} Porn is forbidden",
+        "/send ${reporterUser} why did you report that?"
+    ]
 }

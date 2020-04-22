@@ -170,7 +170,7 @@ function processTextReply(ctx: Telegraf.ContextMessageUpdate) {
 async function saveReportState(ctx: Telegraf.ContextMessageUpdate) {
     const userID = ctx.callbackQuery.data.substring(7);
     const reportedName = await getUserByID(userID);
-    const reportInfo = new ReportInfo(ctx.callbackQuery.message.caption, getBestPhoto(ctx.callbackQuery.message).file_id, ctx.from, <string | null>reportedName, userID, bot, conf.adminChat, dbHelper);
+    const reportInfo = new ReportInfo(ctx.callbackQuery.message.caption, getBestPhoto(ctx.callbackQuery.message).file_id, ctx.from, <string | null>reportedName, userID, bot, conf, dbHelper);
     ctx.reply('Please specify the report reason. You can use /cancel to abort the operation');
     ctx.answerCbQuery();
     userStatusMap.set(ctx.from.id, { status: Status.REPORT, extraReportInfo: reportInfo });
