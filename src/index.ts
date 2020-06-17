@@ -9,10 +9,13 @@ import { UserStatus } from './UserStatus';
 import { ReportInfo } from './reportInfo';
 import { Utils } from './utils';
 import { DatabaseHelper } from './db-helper';
+import { Pic } from './Pic';
 
 const version = '1.2.1';
 
-let lastPic: { id: string, caption: string, user: number, messID: number, userName: string, chat: number };
+let lastPic: Pic;
+let lastPicBuffer: Pic[] = [];
+let lastTimeout: NodeJS.Timeout;
 const userStatusMap = new Map<number, UserStatus>();
 
 const confPath = process.argv[2] || './conf';
@@ -218,6 +221,7 @@ function checkAndRemoveLastPic(ctx: Telegraf.ContextMessageUpdate) {
     if (lastPic && lastPic.chat === ctx.chat.id) {
         lastPic = null;
         ctx.reply('Image removed properly');
+        lastPicBuffer.shift();
         if (conf.extendedLog) {
             bot.telegram.sendMessage(conf.adminChat, `User ${makeUserLink(ctx.from)} has deleted the picture`,
                 { parse_mode: 'Markdown' });
@@ -261,32 +265,26 @@ function resendPic(ctx: Telegraf.ContextMessageUpdate) {
     bestPhoto = getBestPhoto(ctx.message);
 
     if (!lastPic) {
-        lastPic = { id: bestPhoto.file_id, caption: ctx.message.caption, user: ctx.from.id, messID: ctx.message.message_id, userName: ctx.from.first_name, chat: ctx.chat.id };
+        assignPic(ctx, true);
         ctx.reply('Waiting for another user to upload their photo. Having second thoughts? Use /cancel to delete the image');
         if (conf.extendedLog) {
             bot.telegram.sendMessage(conf.adminChat, `User ${makeUserLink(ctx.from)} has sent a picture`,
                 { parse_mode: 'Markdown' });
         }
+        lastTimeout = setTimeout(resendOldPic, conf.timeout * 1000, ctx);
     } else if (lastPic.chat === ctx.chat.id) {
-        lastPic = { id: bestPhoto.file_id, caption: ctx.message.caption, user: ctx.from.id, messID: ctx.message.message_id, userName: ctx.from.first_name, chat: ctx.chat.id };
+        lastPicBuffer.shift();
+        assignPic(ctx, true);
         ctx.reply('You already uploaded a photo before. I\'ll send this one instead of the previous. Having second thoughts? Use /cancel to delete the image');
         if (conf.extendedLog) {
             bot.telegram.sendMessage(conf.adminChat, `User ${makeUserLink(ctx.from)} has overwritten a sent picture`,
                 { parse_mode: 'Markdown' });
         }
     } else {
+        const newPic = assignPic(ctx, false);
         // Envíamos la foto B al usuario A
-        // @ts-ignore
-        bot.telegram.sendPhoto(lastPic.chat, bestPhoto.file_id, Telegraf.Extra.load({ caption: ctx.message.caption })
-            .markup(makeKeyboard(ctx.from.id, { messID: ctx.message.message_id, chatID: ctx.chat.id })));
-        // Envíamos la foto A al usuario B
-        // @ts-ignore
-        bot.telegram.sendPhoto(ctx.chat.id, lastPic.id, Telegraf.Extra.load({ caption: lastPic.caption })
-            .markup(makeKeyboard(lastPic.user, { messID: lastPic.messID, chatID: lastPic.chat })));
-        if (conf.extendedLog) {
-            bot.telegram.sendMessage(conf.adminChat, `User ${makeUserLink(ctx.from)} has exchanged pictures with [${lastPic.userName}](tg://user?id=${lastPic.user}) \`${lastPic.user}\``,
-                { parse_mode: 'Markdown' });
-        }
+        exchangePic(newPic, lastPic);
+        clearTimeout(lastTimeout);
         lastPic = null;
     }
     if (conf.resendAll) {
@@ -298,6 +296,54 @@ function resendPic(ctx: Telegraf.ContextMessageUpdate) {
     }
 }
 
+function exchangePic(pic1: Pic, pic2: Pic) {
+    // @ts-ignore
+    bot.telegram.sendPhoto(pic1.chat, pic2.id, Telegraf.Extra.load({ caption: pic2.caption })
+        .markup(makeKeyboard(pic2.user, { messID: pic2.messID, chatID: pic2.chat })));
+    // Envíamos la foto A al usuario B
+    // @ts-ignore
+    bot.telegram.sendPhoto(pic2.chat, pic1.id, Telegraf.Extra.load({ caption: pic1.caption })
+        .markup(makeKeyboard(pic1.user, { messID: pic1.messID, chatID: pic1.chat })));
+    if (conf.extendedLog) {
+        bot.telegram.sendMessage(conf.adminChat, `User[${pic1.userName}](tg://user?id=${pic1.user}) \`${pic1.user}\` has exchanged pictures with [${pic2.userName}](tg://user?id=${pic2.user}) \`${pic2.user}\``,
+            { parse_mode: 'Markdown' });
+    }
+}
+
+function resendOldPic(ctx: Telegraf.ContextMessageUpdate) {
+    let photoToResend: Pic = null;
+    let i = 0;
+    do {
+        if (lastPicBuffer[i].chat !== ctx.chat.id) {
+            photoToResend = lastPicBuffer[i];
+        } else {
+            i++;
+        }
+    } while (photoToResend == null && i < lastPicBuffer.length);
+    if (photoToResend) {
+        lastPicBuffer.splice(i, 1);
+        exchangePic(createPic(ctx), photoToResend);
+    }
+}
+
+function assignPic(ctx: Telegraf.ContextMessageUpdate, last: boolean) {
+    const pic = createPic(ctx);
+    if (last) {
+        lastPic = pic;
+    }
+    lastPicBuffer.push(pic);
+    while (lastPicBuffer.length > 10) {
+        lastPicBuffer.shift();
+    }
+    return pic;
+}
+
 setInterval(saveState, conf.backupInterval * 1000);
 loadState();
 bot.launch();
+function createPic(ctx: Telegraf.ContextMessageUpdate) {
+    const bestPhoto = getBestPhoto(ctx.message);
+    const pic = { id: bestPhoto.file_id, caption: ctx.message.caption, user: ctx.from.id, messID: ctx.message.message_id, userName: ctx.from.first_name, chat: ctx.chat.id };
+    return pic;
+}
+

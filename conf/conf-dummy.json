@@ -6,6 +6,7 @@
     "resendAll": false,
     "extendedLog": false,
     "backupInterval": 300,
+    "timeout": "1800",
     "modAnswers": [
         "/warn ${reportedUser} Personal attacks are forbidden",
         "/ban ${reportedUser} Porn is forbidden",

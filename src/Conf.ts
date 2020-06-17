@@ -4,5 +4,6 @@ export type Conf = {
     resendAll: boolean;
     extendedLog: boolean;
     backupInterval: number;
+    timeout: number;
     modAnswers: string[];
 };
