@@ -6,3 +6,4 @@ exchangeBotDB.db
 lib
 build
 conf/lastPic.json
+automod.json

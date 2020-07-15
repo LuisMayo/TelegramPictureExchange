@@ -1,12 +1,12 @@
 import { Utils } from "./utils";
 import { User } from "telegraf/typings/telegram-types";
-import Telegraf, { ContextMessageUpdate, Markup } from "telegraf";
+import Telegraf, { Context, Markup } from "telegraf";
 import { DatabaseHelper } from "./db-helper";
 import { Conf } from "./Conf";
 import { ButtonKeyBoardHelper } from "./button-keyboard-helper";
 
 export class ReportInfo {
-    constructor(private caption: string, private fileId: string, private reporter: User, private reportedUserName: string, private reportedUserId: string, private bot: Telegraf<ContextMessageUpdate>, private conf: Conf, private dbHelper: DatabaseHelper) { }
+    constructor(private caption: string, private fileId: string, private reporter: User, private reportedUserName: string, private reportedUserId: string, private bot: Telegraf<Context>, private conf: Conf, private dbHelper: DatabaseHelper) { }
     makeDefaultOptionsKeyboard() {
         const optionArray = this.conf.modAnswers.map(answer => answer.replace('${reportedUser}', this.reportedUserId).replace('${reporterUser}', this.reporter.id.toString()));
         const keyboard = new ButtonKeyBoardHelper();

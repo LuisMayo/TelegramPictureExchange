@@ -1,5 +1,5 @@
 import { User } from "telegraf/typings/telegram-types";
-import { ContextMessageUpdate } from "telegraf";
+import { Context } from "telegraf";
 
 export class DatabaseHelper {
     private db: any;
@@ -7,7 +7,7 @@ export class DatabaseHelper {
         this.db = require('sqlite3-wrapper').open(confPath + '/exchangeBotDB.db');
     }
 
-    checkPermissionsAndExecute(ctx: ContextMessageUpdate, fn: ((ctx: ContextMessageUpdate) => any)) {
+    checkPermissionsAndExecute(ctx: Context, fn: ((ctx: Context) => any)) {
         this.db.select({ table: 'users', where: { id: ctx.from.id } }, (err, users) => {
             if (!users || users.length <= 0) {
                 this.db.insert('users', { id: ctx.from.id, username: ctx.from.first_name });

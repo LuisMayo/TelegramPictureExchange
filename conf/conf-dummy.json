@@ -10,5 +10,9 @@
         "/warn ${reportedUser} Personal attacks are forbidden",
         "/ban ${reportedUser} Porn is forbidden",
         "/send ${reporterUser} why did you report that?"
-    ]
+    ],
+    "automod": {
+        "enabled": true,
+        "maxPhotoBuffer": 100
+    }
 }

@@ -1,7 +1,8 @@
 import * as Telegraf from 'telegraf';
+import { CallbackButton, Button } from 'telegraf/typings/markup';
 
 export class ButtonKeyBoardHelper {
-    buttons: (Telegraf.CallbackButton | Telegraf.Button)[][] = [];
+    buttons: (CallbackButton | Button)[][] = [];
     lastArr = [];
     charactersInCurrentLine = 0;
 

@@ -9,16 +9,20 @@ import { UserStatus } from './UserStatus';
 import { ReportInfo } from './reportInfo';
 import { Utils } from './utils';
 import { DatabaseHelper } from './db-helper';
+import { saveBan, unban, saveWarning } from './warning-ban-manager';
+import { AutoMod } from './automod';
+import { Context } from 'telegraf';
 
 const version = '1.2.1';
 
-let lastPic: { id: string, caption: string, user: number, messID: number, userName: string, chat: number };
+let lastPic: { id: string, caption: string, user: number, messID: number, userName: string, chat: number, originalPhoto: PhotoSize };
 const userStatusMap = new Map<number, UserStatus>();
 
 const confPath = process.argv[2] || './conf';
 const dbHelper = new DatabaseHelper(confPath);
-const conf: Conf = JSON.parse(fs.readFileSync(confPath + '/conf.json', { encoding: 'UTF-8' }));
+export const conf: Conf = JSON.parse(fs.readFileSync(confPath + '/conf.json', { encoding: 'UTF-8' }));
 const bot = new Telegraf.default(conf.token);
+const automod = AutoMod.getInstance(dbHelper);
 
 bot.start(ctx => {
     ctx.reply('Hi! This bot can be used for exchanging pictures with random users!\nTo start just sent me a picture, caption can be provided')
@@ -39,7 +43,7 @@ bot.command('admin', ctx => {
 bot.command('ban', (ctx) => {
     if (ctx.chat.id === +conf.adminChat) {
         let args = ctx.message.text.split(' ');
-        Promise.all([bot.telegram.sendMessage(args[1], 'You\'ve been banned: ' + args.slice(2).join(' ')), saveBan(args[1])]).then(() =>
+        Promise.all([bot.telegram.sendMessage(args[1], 'You\'ve been banned: ' + args.slice(2).join(' ')), saveBan(args[1], dbHelper)]).then(() =>
             bot.telegram.sendMessage(conf.adminChat, 'User banned correctly')
         )
     }
@@ -69,7 +73,7 @@ bot.command('unban', (ctx) => {
     if (ctx.chat.id === +conf.adminChat) {
         let args = ctx.message.text.split(' ');
         bot.telegram.sendMessage(args[1], 'You\'ve been un-banned: ' + args.slice(2).join(' '));
-        unban(args[1]);
+        unban(args[1], dbHelper);
     }
 });
 
@@ -80,7 +84,7 @@ bot.command('version', ctx => {
 bot.command('warn', (ctx) => {
     if (ctx.chat.id === +conf.adminChat) {
         let args = ctx.message.text.split(' ');
-        Promise.all([bot.telegram.sendMessage(args[1], 'You\'ve been warned: ' + args.slice(2).join(' ')), saveWarning(args[1])]).then(() =>
+        Promise.all([bot.telegram.sendMessage(args[1], 'You\'ve been warned: ' + args.slice(2).join(' ')), saveWarning(args[1], dbHelper)]).then(() =>
             bot.telegram.sendMessage(conf.adminChat, 'User warned correctly')
         );
     }
@@ -135,7 +139,7 @@ process.on('SIGINT', function () {
 });
 
 /// Process Reply
-function processImageReply(ctx: Telegraf.ContextMessageUpdate) {
+function processImageReply(ctx: Context) {
     processReply(ctx, (ctx, userStatus) => {
         userStatus.extraInfo.Reply(ctx.message.caption, MessageTypes.IMAGE, getBestPhoto(ctx.message).file_id);
         if (conf.resendAll) {
@@ -145,7 +149,7 @@ function processImageReply(ctx: Telegraf.ContextMessageUpdate) {
     });
 }
 
-function processReply(ctx: Telegraf.ContextMessageUpdate, fn: (ctx: Telegraf.ContextMessageUpdate, userStatus: UserStatus) => void) {
+function processReply(ctx: Context, fn: (ctx: Context, userStatus: UserStatus) => void) {
     if (userStatusMap.has(ctx.from.id)) {
         const userStatus = userStatusMap.get(ctx.from.id);
         if (userStatus.status === Status.REPLY) {
@@ -161,13 +165,13 @@ function processReply(ctx: Telegraf.ContextMessageUpdate, fn: (ctx: Telegraf.Con
     }
 }
 
-function processTextReply(ctx: Telegraf.ContextMessageUpdate) {
+function processTextReply(ctx: Context) {
     processReply(ctx, (ctx, userStatus) => {
         userStatus.extraInfo.Reply(ctx.message.text, MessageTypes.TEXT);
     });
 }
 // Process Reply end
-async function saveReportState(ctx: Telegraf.ContextMessageUpdate) {
+async function saveReportState(ctx: Context) {
     const userID = ctx.callbackQuery.data.substring(7);
     const reportedName = await getUserByID(userID);
     const reportInfo = new ReportInfo(ctx.callbackQuery.message.caption, getBestPhoto(ctx.callbackQuery.message).file_id, ctx.from, <string | null>reportedName, userID, bot, conf, dbHelper);
@@ -176,25 +180,10 @@ async function saveReportState(ctx: Telegraf.ContextMessageUpdate) {
     userStatusMap.set(ctx.from.id, { status: Status.REPORT, extraReportInfo: reportInfo });
 }
 
-function processReport(ctx: Telegraf.ContextMessageUpdate) {
+function processReport(ctx: Context) {
     const status = userStatusMap.get(ctx.from.id);
     status.extraReportInfo.sendReport(ctx.message.text).then(value => ctx.reply('Report sent'), error => ctx.reply('Report couldn\'t ve sent'));
     userStatusMap.delete(ctx.from.id);
-}
-// Process report
-
-
-// Warning and ban zone
-function saveWarning(id: string) {
-    return dbHelper.saveWarning(id);
-}
-
-function saveBan(id: string) {
-    return dbHelper.saveWarning(id);
-}
-
-function unban(id: string) {
-    return dbHelper.saveBan(id);
 }
 // End
 
@@ -202,6 +191,7 @@ function unban(id: string) {
 function saveState() {
     const save = JSON.stringify(lastPic);
     fs.writeFileSync(confPath + '/lastPic.json', save, { encoding: 'UTF-8' });
+    automod.saveToDisk(confPath)
 }
 
 function loadState() {
@@ -211,10 +201,11 @@ function loadState() {
     } catch (e) {
         lastPic = null;
     }
+    automod.loadFromDisk(confPath);
 }
 // End
 
-function checkAndRemoveLastPic(ctx: Telegraf.ContextMessageUpdate) {
+function checkAndRemoveLastPic(ctx: Context) {
     if (lastPic && lastPic.chat === ctx.chat.id) {
         lastPic = null;
         ctx.reply('Image removed properly');
@@ -225,7 +216,7 @@ function checkAndRemoveLastPic(ctx: Telegraf.ContextMessageUpdate) {
     }
 }
 
-function checkPermissionsAndExecute(ctx: Telegraf.ContextMessageUpdate, fn: ((ctx: Telegraf.ContextMessageUpdate) => any)) {
+function checkPermissionsAndExecute(ctx: Context, fn: ((ctx: Context) => any)) {
     dbHelper.checkPermissionsAndExecute(ctx, fn);
 }
 
@@ -255,39 +246,43 @@ function makeUserLink(usr: User) {
     return Utils.makeUserLink(usr);
 }
 
-function resendPic(ctx: Telegraf.ContextMessageUpdate) {
+async function resendPic(ctx: Context) {
     let bestPhoto: PhotoSize;
     dbHelper.insertUserIntoDB(ctx.from);
     bestPhoto = getBestPhoto(ctx.message);
-
-    if (!lastPic) {
-        lastPic = { id: bestPhoto.file_id, caption: ctx.message.caption, user: ctx.from.id, messID: ctx.message.message_id, userName: ctx.from.first_name, chat: ctx.chat.id };
-        ctx.reply('Waiting for another user to upload their photo. Having second thoughts? Use /cancel to delete the image');
-        if (conf.extendedLog) {
-            bot.telegram.sendMessage(conf.adminChat, `User ${makeUserLink(ctx.from)} has sent a picture`,
-                { parse_mode: 'Markdown' });
+    const duplicated = await automod.checkIfDuplicatedPhoto(bestPhoto, ctx);
+    if (!duplicated) {
+        if (!lastPic) {
+            lastPic = { id: bestPhoto.file_id, caption: ctx.message.caption, user: ctx.from.id, messID: ctx.message.message_id, userName: ctx.from.first_name, chat: ctx.chat.id, originalPhoto: bestPhoto };
+            ctx.reply('Waiting for another user to upload their photo. Having second thoughts? Use /cancel to delete the image');
+            if (conf.extendedLog) {
+                bot.telegram.sendMessage(conf.adminChat, `User ${makeUserLink(ctx.from)} has sent a picture`,
+                    { parse_mode: 'Markdown' });
+            }
+        } else if (lastPic.chat === ctx.chat.id) {
+            lastPic = { id: bestPhoto.file_id, caption: ctx.message.caption, user: ctx.from.id, messID: ctx.message.message_id, userName: ctx.from.first_name, chat: ctx.chat.id, originalPhoto: bestPhoto };
+            ctx.reply('You already uploaded a photo before. I\'ll send this one instead of the previous. Having second thoughts? Use /cancel to delete the image');
+            if (conf.extendedLog) {
+                bot.telegram.sendMessage(conf.adminChat, `User ${makeUserLink(ctx.from)} has overwritten a sent picture`,
+                    { parse_mode: 'Markdown' });
+            }
+        } else {
+            // Envíamos la foto B al usuario A
+            // @ts-ignore
+            bot.telegram.sendPhoto(lastPic.chat, bestPhoto.file_id, Telegraf.Extra.load({ caption: ctx.message.caption })
+                .markup(makeKeyboard(ctx.from.id, { messID: ctx.message.message_id, chatID: ctx.chat.id })));
+            // Envíamos la foto A al usuario B
+            // @ts-ignore
+            bot.telegram.sendPhoto(ctx.chat.id, lastPic.id, Telegraf.Extra.load({ caption: lastPic.caption })
+                .markup(makeKeyboard(lastPic.user, { messID: lastPic.messID, chatID: lastPic.chat })));
+            if (conf.extendedLog) {
+                bot.telegram.sendMessage(conf.adminChat, `User ${makeUserLink(ctx.from)} has exchanged pictures with [${lastPic.userName}](tg://user?id=${lastPic.user}) \`${lastPic.user}\``,
+                    { parse_mode: 'Markdown' });
+            }
+            automod.registerPhoto(lastPic.originalPhoto);
+            automod.registerPhoto(bestPhoto);
+            lastPic = null;
         }
-    } else if (lastPic.chat === ctx.chat.id) {
-        lastPic = { id: bestPhoto.file_id, caption: ctx.message.caption, user: ctx.from.id, messID: ctx.message.message_id, userName: ctx.from.first_name, chat: ctx.chat.id };
-        ctx.reply('You already uploaded a photo before. I\'ll send this one instead of the previous. Having second thoughts? Use /cancel to delete the image');
-        if (conf.extendedLog) {
-            bot.telegram.sendMessage(conf.adminChat, `User ${makeUserLink(ctx.from)} has overwritten a sent picture`,
-                { parse_mode: 'Markdown' });
-        }
-    } else {
-        // Envíamos la foto B al usuario A
-        // @ts-ignore
-        bot.telegram.sendPhoto(lastPic.chat, bestPhoto.file_id, Telegraf.Extra.load({ caption: ctx.message.caption })
-            .markup(makeKeyboard(ctx.from.id, { messID: ctx.message.message_id, chatID: ctx.chat.id })));
-        // Envíamos la foto A al usuario B
-        // @ts-ignore
-        bot.telegram.sendPhoto(ctx.chat.id, lastPic.id, Telegraf.Extra.load({ caption: lastPic.caption })
-            .markup(makeKeyboard(lastPic.user, { messID: lastPic.messID, chatID: lastPic.chat })));
-        if (conf.extendedLog) {
-            bot.telegram.sendMessage(conf.adminChat, `User ${makeUserLink(ctx.from)} has exchanged pictures with [${lastPic.userName}](tg://user?id=${lastPic.user}) \`${lastPic.user}\``,
-                { parse_mode: 'Markdown' });
-        }
-        lastPic = null;
     }
     if (conf.resendAll) {
         bot.telegram.sendPhoto(conf.adminChat, bestPhoto.file_id,
