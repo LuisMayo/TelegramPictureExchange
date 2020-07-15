@@ -48,7 +48,7 @@ export class AutoMod {
 
     registerPhoto(photo: PhotoSize) {
         ///@ts-ignore
-        this.knownPhotos.push(photo.file_unique_id);
+        this.knownPhotos.unshift(photo.file_unique_id);
         if (this.knownPhotos.length > conf.automod.maxPhotoBuffer) {
             this.knownPhotos.splice(conf.automod.maxPhotoBuffer);
         }
