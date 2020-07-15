@@ -1,7 +1,8 @@
 {
     "compilerOptions": {
       "outDir": "./build",
-      "sourceMap": true
+      "sourceMap": true,
+      "target": "ES3"
     },
     "include": ["src"],
     "exclude": ["node_modules", "**/__tests__/*", "web"]
