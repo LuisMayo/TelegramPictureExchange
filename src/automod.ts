@@ -2,8 +2,9 @@ import { DatabaseHelper } from "./db-helper";
 import { Context } from "telegraf";
 import { PhotoSize } from "telegraf/typings/telegram-types";
 import { saveWarning } from "./warning-ban-manager";
-import { conf } from "./index";
+import { conf, bot } from "./index";
 import * as fs from 'fs';
+import { Utils } from "./utils";
 
 export class AutoMod {
     knownPhotos: string[] = [];
@@ -26,6 +27,7 @@ export class AutoMod {
             if (duplicated) {
                 await saveWarning(ctx.from.id.toString(), this.db);
                 ctx.reply('[AUTOMOD] You have been warned: Do not send the same picture twice');
+                bot.telegram.sendMessage(conf.adminChat, `User ${Utils.makeUserLink(ctx.from)} has been warned for repeating pictures`, {parse_mode: "Markdown"});
                 return true;
             } else {
                 return false;

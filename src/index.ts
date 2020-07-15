@@ -21,7 +21,7 @@ const userStatusMap = new Map<number, UserStatus>();
 const confPath = process.argv[2] || './conf';
 const dbHelper = new DatabaseHelper(confPath);
 export const conf: Conf = JSON.parse(fs.readFileSync(confPath + '/conf.json', { encoding: 'UTF-8' }));
-const bot = new Telegraf.default(conf.token);
+export const bot = new Telegraf.default(conf.token);
 const automod = AutoMod.getInstance(dbHelper);
 
 bot.start(ctx => {
