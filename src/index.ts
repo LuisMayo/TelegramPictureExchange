@@ -20,7 +20,7 @@ const userStatusMap = new Map<number, UserStatus>();
 
 const confPath = process.argv[2] || './conf';
 const dbHelper = new DatabaseHelper(confPath);
-export const conf: Conf = JSON.parse(fs.readFileSync(confPath + '/conf.json', { encoding: 'UTF-8' }));
+export const conf: Conf = JSON.parse(fs.readFileSync(confPath + '/conf.json', { encoding: 'utf-8' }));
 export const bot = new Telegraf.default(conf.token);
 const automod = AutoMod.getInstance(dbHelper);
 
@@ -190,13 +190,13 @@ function processReport(ctx: Context) {
 // State zone
 function saveState() {
     const save = JSON.stringify(lastPic);
-    fs.writeFileSync(confPath + '/lastPic.json', save, { encoding: 'UTF-8' });
+    fs.writeFileSync(confPath + '/lastPic.json', save, { encoding: 'utf-8' });
     automod.saveToDisk(confPath)
 }
 
 function loadState() {
     try {
-        const load = fs.readFileSync(confPath + '/lastPic.json', { encoding: 'UTF-8' });
+        const load = fs.readFileSync(confPath + '/lastPic.json', { encoding: 'utf-8' });
         lastPic = JSON.parse(load)
     } catch (e) {
         lastPic = null;

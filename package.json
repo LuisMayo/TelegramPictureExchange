@@ -4,6 +4,7 @@
   "description": "telegram bot to exchange pics",
   "main": "index.js",
   "dependencies": {
+    "@types/node": "^14.0.23",
     "sqlite3-wrapper": "^1.1.1",
     "telegraf": "^3.38.0"
   },

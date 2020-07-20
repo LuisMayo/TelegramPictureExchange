@@ -39,7 +39,7 @@ export class AutoMod {
 
     loadFromDisk(confPath: string) {
         try {
-            const load = fs.readFileSync(confPath + '/automod.json', { encoding: 'UTF-8' });
+            const load = fs.readFileSync(confPath + '/automod.json', { encoding: 'utf-8' });
             const obj = JSON.parse(load) || {};
             this.knownPhotos = obj.knownPhotos || [];
         } catch (e) {
@@ -56,6 +56,6 @@ export class AutoMod {
 
     saveToDisk(confPath: string) {
         const save = JSON.stringify({knownPhotos: this.knownPhotos});
-        fs.writeFileSync(confPath + '/automod.json', save, { encoding: 'UTF-8' });
+        fs.writeFileSync(confPath + '/automod.json', save, { encoding: 'utf-8' });
     }
 }
