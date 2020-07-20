@@ -5,6 +5,7 @@ export type Conf = {
     extendedLog: boolean;
     backupInterval: number;
     modAnswers: string[];
+    startMessage: string,
     automod: {
         enabled: boolean;
         maxPhotoBuffer: number;

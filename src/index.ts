@@ -25,7 +25,7 @@ export const bot = new Telegraf.default(conf.token);
 const automod = AutoMod.getInstance(dbHelper);
 
 bot.start(ctx => {
-    ctx.reply('Hi! This bot can be used for exchanging pictures with random users!\nTo start just sent me a picture, caption can be provided')
+    ctx.reply(conf.startMessage);
 });
 
 // Bot commands
