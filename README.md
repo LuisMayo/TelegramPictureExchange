@@ -1,3 +1,4 @@
+![Build](https://github.com/LuisMayo/TelegramPictureExchange/workflows/Build/badge.svg)
 # TelegramPictureExchange
 Telegram Bot to exchange pics.
 
