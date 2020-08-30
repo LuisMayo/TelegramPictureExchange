@@ -13,7 +13,7 @@ import { saveBan, unban, saveWarning } from './warning-ban-manager';
 import { AutoMod } from './automod';
 import { Context } from 'telegraf';
 
-const version = '1.2.1';
+const version = '1.0.0';
 
 let lastPic: { id: string, caption: string, user: number, messID: number, userName: string, chat: number, originalPhoto: PhotoSize };
 const userStatusMap = new Map<number, UserStatus>();
