@@ -5,7 +5,7 @@ export function saveWarning(id: string, dbHelper: DatabaseHelper) {
     return dbHelper.saveWarning(id);
 }
 export function saveBan(id: string, dbHelper: DatabaseHelper) {
-    return dbHelper.saveWarning(id);
+    return dbHelper.saveBan(id);
 }
 export function unban(id: string, dbHelper: DatabaseHelper) {
     return dbHelper.saveBan(id);
