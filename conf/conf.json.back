@@ -1,0 +1,21 @@
+{
+    "comment":"Please copy me into 'conf.json' and fill the data",
+    "token": "521802326:AAG-z2fTusY-gAAEvwZnMNLT-tXDj1_atVg",
+    "adminChat": "-254243695",
+    "resendAll": false,
+    "extendedLog": false,
+    "backupInterval": 10,
+    "timeout": 10,
+    "modAnswers": [
+        "/warn ${reportedUser} Please go to @NsfwExchangebot to send normal porn images",
+        "/warn ${reportedUser} Please do not send normal pics here, go to @picsExchangebot",
+        "/warn ${reportedUser} Please do not send blank images",
+        "/ban ${reportedUser} Images including minors in sexual contexts are not allowed",
+        "/send ${reporterUser} The user you reported has been warned",
+        "/send ${reporterUser} The user you reported has been banned"
+    ],
+    "automod": {
+        "enabled": true,
+        "maxPhotoBuffer": 1
+    }
+}

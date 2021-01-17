@@ -1,0 +1,72 @@
+{
+    "$schema": "http://json-schema.org/draft-06/schema#",
+    "$ref": "#/definitions/Conf",
+    "definitions": {
+        "Conf": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "comment": {
+                    "type": "string"
+                },
+                "token": {
+                    "type": "string"
+                },
+                "adminChat": {
+                    "type": "string",
+                    "format": "integer"
+                },
+                "resendAll": {
+                    "type": "boolean"
+                },
+                "extendedLog": {
+                    "type": "boolean"
+                },
+                "backupInterval": {
+                    "type": "integer"
+                },
+                "timeout": {
+                    "type": "integer"
+                },
+                "modAnswers": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "automod": {
+                    "$ref": "#/definitions/Automod"
+                }
+            },
+            "required": [
+                "adminChat",
+                "automod",
+                "backupInterval",
+                "comment",
+                "extendedLog",
+                "modAnswers",
+                "resendAll",
+                "timeout",
+                "token"
+            ],
+            "title": "Conf"
+        },
+        "Automod": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                },
+                "maxPhotoBuffer": {
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "enabled",
+                "maxPhotoBuffer"
+            ],
+            "title": "Automod"
+        }
+    }
+}
