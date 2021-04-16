@@ -8,5 +8,5 @@ export function saveBan(id: string, dbHelper: DatabaseHelper) {
     return dbHelper.saveBan(id);
 }
 export function unban(id: string, dbHelper: DatabaseHelper) {
-    return dbHelper.saveBan(id);
+    return dbHelper.unban(id);
 }
