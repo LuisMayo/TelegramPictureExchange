@@ -12,10 +12,11 @@ import { DatabaseHelper } from './db-helper';
 import { saveBan, unban, saveWarning } from './warning-ban-manager';
 import { AutoMod } from './automod';
 import { Context } from 'telegraf';
+import { SavedPic } from './SavedPic';
 
 const version = '1.0.0';
 
-let lastPic: { id: string, caption: string, user: number, messID: number, userName: string, chat: number, originalPhoto: PhotoSize };
+let lastPic: SavedPic;
 const userStatusMap = new Map<number, UserStatus>();
 
 const confPath = process.argv[2] || './conf';
@@ -246,6 +247,10 @@ function makeUserLink(usr: User) {
     return Utils.makeUserLink(usr);
 }
 
+function savePic(bestPhoto: PhotoSize, ctx: Telegraf.Context): SavedPic {
+    return { id: bestPhoto.file_id, caption: ctx.message.caption, user: ctx.from.id, messID: ctx.message.message_id, userName: ctx.from.first_name, chat: ctx.chat.id, originalPhoto: bestPhoto };
+}
+
 async function resendPic(ctx: Context) {
     let bestPhoto: PhotoSize;
     dbHelper.insertUserIntoDB(ctx.from);
@@ -253,14 +258,14 @@ async function resendPic(ctx: Context) {
     const duplicated = await automod.checkIfDuplicatedPhoto(bestPhoto, ctx);
     if (!duplicated) {
         if (!lastPic) {
-            lastPic = { id: bestPhoto.file_id, caption: ctx.message.caption, user: ctx.from.id, messID: ctx.message.message_id, userName: ctx.from.first_name, chat: ctx.chat.id, originalPhoto: bestPhoto };
+            lastPic = savePic(bestPhoto, ctx);
             ctx.reply('Waiting for another user to upload their photo. Having second thoughts? Use /cancel to delete the image');
             if (conf.extendedLog) {
                 bot.telegram.sendMessage(conf.adminChat, `User ${makeUserLink(ctx.from)} has sent a picture`,
                     { parse_mode: 'Markdown' });
             }
         } else if (lastPic.chat === ctx.chat.id) {
-            lastPic = { id: bestPhoto.file_id, caption: ctx.message.caption, user: ctx.from.id, messID: ctx.message.message_id, userName: ctx.from.first_name, chat: ctx.chat.id, originalPhoto: bestPhoto };
+            lastPic = savePic(bestPhoto, ctx);
             ctx.reply('You already uploaded a photo before. I\'ll send this one instead of the previous. Having second thoughts? Use /cancel to delete the image');
             if (conf.extendedLog) {
                 bot.telegram.sendMessage(conf.adminChat, `User ${makeUserLink(ctx.from)} has overwritten a sent picture`,
@@ -296,3 +301,5 @@ async function resendPic(ctx: Context) {
 setInterval(saveState, conf.backupInterval * 1000);
 loadState();
 bot.launch();
+
+
