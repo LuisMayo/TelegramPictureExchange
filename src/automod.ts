@@ -27,7 +27,9 @@ export class AutoMod {
             if (duplicated) {
                 await saveWarning(ctx.from.id.toString(), this.db);
                 ctx.reply('[AUTOMOD] You have been warned: Do not send the same picture twice');
-                bot.telegram.sendMessage(conf.adminChat, `User ${Utils.makeUserLink(ctx.from)} has been warned for repeating pictures`, {parse_mode: "Markdown"});
+                if (conf.extendedLog) {
+                    bot.telegram.sendMessage(conf.adminChat, `User ${Utils.makeUserLink(ctx.from)} has been warned for repeating pictures`, {parse_mode: "Markdown"});
+                }
                 return true;
             } else {
                 return false;
