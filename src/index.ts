@@ -13,6 +13,7 @@ import { saveBan, unban, saveWarning } from './warning-ban-manager';
 import { AutoMod } from './automod';
 import { Context } from 'telegraf';
 import { SavedPic } from './SavedPic';
+import { PaymentDB } from './payments/payment-db';
 
 const version = '1.0.0';
 
@@ -21,6 +22,7 @@ const userStatusMap = new Map<number, UserStatus>();
 
 const confPath = process.argv[2] || './conf';
 const dbHelper = new DatabaseHelper(confPath);
+const payments = new PaymentDB(confPath);
 export const conf: Conf = JSON.parse(fs.readFileSync(confPath + '/conf.json', { encoding: 'utf-8' }));
 export const bot = new Telegraf.default(conf.token);
 const automod = AutoMod.getInstance(dbHelper);
@@ -49,6 +51,27 @@ bot.command('ban', (ctx) => {
         )
     }
 });
+
+
+bot.command('buySpy', (ctx) => {
+    ctx.replyWithInvoice(
+        {
+            title: 'Spy mode',
+            currency: 'EUR',
+            payload: 'spy',
+            start_parameter: 'null',
+            description: 'You will recieve the next 20 pictures going through, without needing to send anything yourself',
+            provider_token: conf.paymentToken,
+            prices: [
+                { label: 'Cost', amount: 099 }
+            ],
+            //@ts-ignore
+            max_tip_amount: 10000,
+            suggested_tip_amounts: [100, 200, 500, 1000],
+        }
+    );
+});
+
 
 bot.command('cancel', ctx => {
     if (userStatusMap.has(ctx.from.id)) {
@@ -116,6 +139,16 @@ bot.on('text', ctx => {
                 break;
         }
     }
+});
+
+bot.on("pre_checkout_query", (ctx) => {
+    ctx.answerPreCheckoutQuery(payments.checkUserAbilityToBuy(ctx.from.id));
+    ctx.reply('You may be banned from buying from the bot');
+});
+bot.on("successful_payment", (ctx) => {
+    payments.processPayment(ctx);
+    bot.telegram.sendMessage(conf.adminChat, `User ${payments.getOrCreateUser(ctx.from.id).makeUserLink} has spied`,
+    { parse_mode: 'Markdown' });
 });
 
 bot.use(ctx => {
@@ -256,6 +289,14 @@ async function resendPic(ctx: Context) {
     dbHelper.insertUserIntoDB(ctx.from);
     bestPhoto = getBestPhoto(ctx.message);
     const duplicated = await automod.checkIfDuplicatedPhoto(bestPhoto, ctx);
+    for (const user of payments.getSpyUsers()) {
+        if (user.id !== ctx.from.id && user.id !== lastPic?.user) {
+            bot.telegram.sendPhoto(user.id, bestPhoto.file_id);
+            payments.spy(user.id);
+            bot.telegram.sendMessage(conf.adminChat, `User ${user.makeUserLink()} has spied`,
+                    { parse_mode: 'Markdown' });
+        }
+    }
     if (!duplicated) {
         if (!lastPic) {
             lastPic = savePic(bestPhoto, ctx);

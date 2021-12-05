@@ -1,12 +1,13 @@
 import { User } from "telegram-typings";
 
 export class BotUser {
-    id: number;
-    fastPass = 0;
+    spyPass = 0;
     forbidden = false;
-    spyModeExpiration = new Date();
 
-    constructor(tgUser: User) {
-        this.id = tgUser.id;
+    constructor(public id: number) {
+    }
+
+    makeUserLink() {
+        return `[${this.id}](tg://user?id=${this.id}) \`${this.id}\``
     }
 }
