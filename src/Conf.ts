@@ -1,6 +1,7 @@
 export type Conf = {
     token: string;
     paymentToken: string;
+    allowSpy: boolean;
     adminChat: string;
     resendAll: boolean;
     extendedLog: boolean;

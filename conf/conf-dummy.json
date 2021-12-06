@@ -2,6 +2,7 @@
     "comment": "Please copy me into 'conf.json' and fill the data",
     "token": "YOUR-TOKEN-HERE",
     "paymentToken": "PAYMENT-TOKEN",
+    "allowSpy": false,
     "adminChat": "YOUR ADMIN CHANNEL HERE",
     "resendAllComment": "If ResendAll is true, all files sent will be resent to the admin chat",
     "resendAll": false,

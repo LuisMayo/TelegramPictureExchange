@@ -52,7 +52,7 @@ export class DatabaseHelper {
     }
 
     saveBan(id: string) {
-        return new Promise((resolve, reject) => {
+        return new Promise<void>((resolve, reject) => {
             try {
                 this.db.update('users', { id: +id }, { banned: 1, banDate: new Date().toString() }, () => resolve());
             } catch (e) {
@@ -63,7 +63,7 @@ export class DatabaseHelper {
     }
 
     saveWarning(id: string) {
-        return new Promise((resolve, reject) => {
+        return new Promise<void>((resolve, reject) => {
             this.db.select({ table: 'users', where: { id: id } }, (err, users) => {
                 if (users && users.length > 0) {
                     this.db.update('users', { id: +id }, { warnings: users[0].warnings + 1, lastWarningDate: new Date().toString() }, () => resolve());

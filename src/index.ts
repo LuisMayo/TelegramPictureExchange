@@ -54,22 +54,24 @@ bot.command('ban', (ctx) => {
 
 
 bot.command('buySpy', (ctx) => {
-    ctx.replyWithInvoice(
-        {
-            title: 'Spy mode',
-            currency: 'EUR',
-            payload: 'spy',
-            start_parameter: 'null',
-            description: 'You will recieve the next 20 pictures going through, without needing to send anything yourself',
-            provider_token: conf.paymentToken,
-            prices: [
-                { label: 'Cost', amount: 099 }
-            ],
-            //@ts-ignore
-            max_tip_amount: 10000,
-            suggested_tip_amounts: [100, 200, 500, 1000],
-        }
-    );
+    if (conf.allowSpy) {
+        ctx.replyWithInvoice(
+            {
+                title: 'Spy mode',
+                currency: 'EUR',
+                payload: 'spy',
+                start_parameter: 'null',
+                description: 'You will recieve the next 20 pictures going through, without needing to send anything yourself.\n Please do note that images may not be to be good, as they\'re supplied by users',
+                provider_token: conf.paymentToken,
+                prices: [
+                    { label: 'Cost', amount: 99 }
+                ],
+                //@ts-ignore
+                max_tip_amount: 10000,
+                suggested_tip_amounts: [100, 200, 500, 1000],
+            }
+        );
+    }
 });
 
 
@@ -92,6 +94,8 @@ bot.command('send', (ctx) => {
         });
     }
 });
+
+bot.command('/terms')
 
 bot.command('unban', (ctx) => {
     if (ctx.chat.id === +conf.adminChat) {
@@ -142,12 +146,11 @@ bot.on('text', ctx => {
 });
 
 bot.on("pre_checkout_query", (ctx) => {
-    ctx.answerPreCheckoutQuery(payments.checkUserAbilityToBuy(ctx.from.id));
-    ctx.reply('You may be banned from buying from the bot');
+    ctx.answerPreCheckoutQuery(payments.checkUserAbilityToBuy(ctx.from.id), 'You may be banned from buying from the bot');
 });
 bot.on("successful_payment", (ctx) => {
     payments.processPayment(ctx);
-    bot.telegram.sendMessage(conf.adminChat, `User ${payments.getOrCreateUser(ctx.from.id).makeUserLink} has spied`,
+    bot.telegram.sendMessage(conf.adminChat, `User ${payments.getOrCreateUser(ctx.from.id).makeUserLink()} is a spy`,
     { parse_mode: 'Markdown' });
 });
 
