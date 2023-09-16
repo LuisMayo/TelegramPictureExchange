@@ -8,8 +8,7 @@ It works this way:
  - The bot will now give Alice Bob's pic and Bob, Alice's pic.
  - The bot will now wait, if a third user now send an image, they will have to wait for a 4th in order to make another exchange
 
-Running on https://t.me/picsExchangebot
-
+Not being officially run anymore
 ## Getting Started
 
 ### Prerequisites
